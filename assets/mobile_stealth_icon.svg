@@ -1,23 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="100%" height="100%">
-  <!-- Android System App Style Stealth Icon: Settings Gear with Subtle Radio Signal -->
   <defs>
     <linearGradient id="gearMetal" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#475569"/>
       <stop offset="50%" stop-color="#334155"/>
       <stop offset="100%" stop-color="#1e293b"/>
     </linearGradient>
-    <linearGradient id="subtleSignal" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#0284c7"/>
-    </linearGradient>
   </defs>
 
-  <!-- Squircle Background (Android Adaptive Icon shape) -->
+  <!-- Squircle Background -->
   <rect width="192" height="192" rx="42" fill="#0f172a" stroke="#334155" stroke-width="2"/>
 
-  <!-- System Settings Gear Outer Teeth -->
+  <!-- Pure Genuine Android Settings Gear (NO WI-FI, ZERO SUSPICION) -->
   <g transform="translate(96,96)">
-    <!-- 8 Cog Teeth -->
     <path d="M -14 -68 L 14 -68 L 18 -52 L -18 -52 Z" fill="#64748b"/>
     <path d="M -14 -68 L 14 -68 L 18 -52 L -18 -52 Z" fill="#64748b" transform="rotate(45)"/>
     <path d="M -14 -68 L 14 -68 L 18 -52 L -18 -52 Z" fill="#64748b" transform="rotate(90)"/>
@@ -27,16 +21,10 @@
     <path d="M -14 -68 L 14 -68 L 18 -52 L -18 -52 Z" fill="#64748b" transform="rotate(270)"/>
     <path d="M -14 -68 L 14 -68 L 18 -52 L -18 -52 Z" fill="#64748b" transform="rotate(315)"/>
 
-    <!-- Gear Body Circle -->
+    <!-- Gear Body -->
     <circle r="55" fill="url(#gearMetal)" stroke="#64748b" stroke-width="3"/>
     
-    <!-- Inner Core Cutout -->
-    <circle r="30" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
-
-    <!-- Hidden In Plain Sight: Stealth Radio Transmission Dot & Waves -->
-    <circle cx="0" cy="0" r="5" fill="url(#subtleSignal)"/>
-    <path d="M -12 -5 A 13 13 0 0 1 12 -5" fill="none" stroke="url(#subtleSignal)" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M -19 -11 A 22 22 0 0 1 19 -11" fill="none" stroke="url(#subtleSignal)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <!-- Clean Center Hole (Pure Settings Icon) -->
+    <circle r="26" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
   </g>
 </svg>
-
