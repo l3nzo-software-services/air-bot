@@ -10,11 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
 
 from cellsentinel.config import settings
-from cellsentinel.database import init_db, SessionLocal
-from cellsentinel.models import Device, Telemetry
-from cellsentinel.schemas import DeviceRegisterRequest
-from cellsentinel.services.device_service import register_device
-from cellsentinel.services.tower_resolver import resolve_cell_tower
+from cellsentinel.database import init_db
 from cellsentinel.api import devices, telemetry, dashboard
 
 

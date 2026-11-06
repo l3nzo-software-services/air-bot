@@ -7,13 +7,13 @@ import os
 import sqlite3
 import datetime
 import hashlib
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from contextlib import asynccontextmanager
 
 import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
