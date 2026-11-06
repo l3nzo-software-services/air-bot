@@ -1,26 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 140" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 220" width="100%" height="100%">
   <defs>
-    <linearGradient id="airGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <!-- Fluid Cyber Cyan & Violet Gradient -->
+    <linearGradient id="handwriteAirBot" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#00f0ff"/>
+      <stop offset="45%" stop-color="#00f0ff"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
     </linearGradient>
-    <linearGradient id="botGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#c084fc"/>
-    </linearGradient>
+
+    <!-- Ambient Neon Glow -->
+    <filter id="cursiveGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
   </defs>
-  <!-- 100% Transparent, No Box -->
-  <g transform="translate(30, 20)">
-    <!-- Aerodynamic Radio Wave Accent -->
-    <path d="M 10 95 Q 60 20 120 95" fill="none" stroke="url(#airGrad)" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
-    <path d="M 30 95 Q 60 45 90 95" fill="none" stroke="url(#airGrad)" stroke-width="4" stroke-linecap="round" opacity="0.4"/>
-    <!-- AIR Modern Tech Wordmark -->
-    <text x="130" y="85" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="78" font-weight="900" letter-spacing="4" fill="url(#airGrad)">AIR</text>
-    <!-- BOT Cyberpunk Contrast -->
-    <text x="320" y="85" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="78" font-weight="900" letter-spacing="8" fill="url(#botGrad)">BOT</text>
-    <!-- Live Airwave Signal Nodes -->
-    <circle cx="515" cy="40" r="7" fill="#00f0ff"/>
-    <circle cx="530" cy="30" r="5" fill="#38bdf8" opacity="0.7"/>
-    <circle cx="542" cy="22" r="3" fill="#818cf8" opacity="0.4"/>
+
+  <!-- 100% Transparent Background - NO SQUARE BOX -->
+
+  <!-- Elegant Continuous Cursive Handwriting "Air Bot" -->
+  <g fill="none" stroke="url(#handwriteAirBot)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" filter="url(#cursiveGlow)">
+    
+    <!-- 'A' Signature Calligraphic Swash & Loop -->
+    <path d="M 65 155 C 115 35, 155 45, 165 105 C 170 145, 140 170, 110 165 C 80 160, 75 125, 100 105 C 130 80, 180 100, 200 155" />
+
+    <!-- 'i' Smooth Transition & Connected Flick -->
+    <path d="M 200 155 C 210 135, 220 112, 230 108 C 235 106, 240 112, 240 132 C 240 152, 250 162, 270 155" />
+    <!-- 'i' Dot -->
+    <circle cx="231" cy="74" r="7.5" fill="#00f0ff" stroke="none"/>
+
+    <!-- 'r' Natural Calligraphic Shoulder -->
+    <path d="M 270 155 C 280 130, 290 105, 300 108 C 310 110, 328 106, 325 125 C 320 145, 340 162, 370 145" />
+
+    <!-- 'B' Signature Master Stroke & Double Loops -->
+    <path d="M 425 55 C 420 110, 410 160, 410 175" />
+    <path d="M 415 60 C 445 45, 480 55, 475 90 C 470 115, 440 120, 420 120 C 455 120, 490 128, 485 158 C 480 182, 440 180, 418 175 C 440 175, 470 175, 498 158" />
+
+    <!-- 'o' Fluid Continuous Loop -->
+    <path d="M 498 158 C 508 130, 522 108, 542 108 C 565 108, 570 130, 565 150 C 560 170, 538 170, 528 155 C 518 135, 538 118, 558 118 L 582 118" />
+
+    <!-- 't' Stem & Upward Flourish -->
+    <path d="M 582 118 C 596 108, 606 82, 610 58 L 610 150 C 610 170, 625 170, 645 160" />
+    <!-- 't' Sharp Modern Crossbar -->
+    <path d="M 588 100 Q 622 97 640 100" stroke-width="11" />
+  </g>
+
+  <!-- ?? TOP-RIGHT CORNER: Radiating Wi-Fi Airwave Signal -->
+  <g transform="translate(635, 15)" stroke="url(#handwriteAirBot)" fill="none" stroke-linecap="round" filter="url(#cursiveGlow)">
+    <!-- Wi-Fi Core Center Point -->
+    <circle cx="28" cy="48" r="5" fill="#00f0ff" stroke="none"/>
+    <!-- Signal Arch 1 -->
+    <path d="M 16 35 A 18 18 0 0 1 42 42" stroke-width="4.5" opacity="0.95"/>
+    <!-- Signal Arch 2 -->
+    <path d="M 7 24 A 32 32 0 0 1 54 36" stroke-width="4" opacity="0.75"/>
+    <!-- Signal Arch 3 (Outer Pulse) -->
+    <path d="M -2 12 A 46 46 0 0 1 65 30" stroke-width="3.5" opacity="0.5"/>
   </g>
 </svg>
