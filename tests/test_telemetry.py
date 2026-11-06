@@ -133,7 +133,7 @@ def test_dashboard_html_view(client):
     """Verify root HTML dashboard serves successfully."""
     res = client.get("/")
     assert res.status_code == 200
-    assert "CellSentinel" in res.text
+    assert "AIR BOT" in res.text
     assert "TELECOM NOTICE" in res.text
     assert "leaflet" in res.text
 

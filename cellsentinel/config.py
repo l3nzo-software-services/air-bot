@@ -11,7 +11,7 @@ from typing import Optional
 class Settings:
     """Application settings and telecom parameters."""
 
-    APP_NAME: str = "CellSentinel"
+    APP_NAME: str = "AIR BOT"
     APP_VERSION: str = "2.0.0"
 
     # Base directories

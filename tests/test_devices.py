@@ -122,3 +122,36 @@ def test_suspended_device_rejection(client):
     )
     assert sus_res.status_code == 403
     assert "access denied" in sus_res.json()["detail"].lower()
+
+
+def test_hardware_derived_key_authentication(client):
+    """Verify hardware-derived key authenticates successfully even if issued token is lost/reset."""
+    from cellsentinel.services.device_service import derive_hardware_key
+
+    raw_imei = "861952072527237"
+    reg_res = client.post("/api/devices", json={
+        "imei": raw_imei,
+        "device_name": "realme 14x pro"
+    })
+    assert reg_res.status_code == 201
+    dev_data = reg_res.json()
+    imei_hash = dev_data["imei_hash"]
+
+    # Compute hardware-derived key (as done by phone after factory wipe)
+    hw_key = derive_hardware_key(imei_hash)
+
+    # Ingest telemetry using hardware-derived key without using issued api_key
+    telem_res = client.post(
+        "/api/telemetry",
+        headers={"X-Device-Token": hw_key},
+        json={
+            "device_id": imei_hash,
+            "mcc": 404,
+            "mnc": 45,
+            "lac": 8520,
+            "cell_id": 41201
+        }
+    )
+    assert telem_res.status_code == 201
+    assert telem_res.json()["success"] is True
+

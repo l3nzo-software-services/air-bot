@@ -1,5 +1,5 @@
-# 📡 CellSentinel
-## Functional Cell-Tower Telemetry & Device Location Visualization Platform
+# 📡 AIR BOT
+## Autonomous Cell-Tower Telemetry & Lost Device Recovery Platform
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-red.svg?style=flat)](https://www.sqlalchemy.org/)
@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Telecom: 3GPP](https://img.shields.io/badge/Standard-3GPP%20Cellular-purple.svg)]()
 
-`CellSentinel` is an open-source, production-grade telecom platform for managing registered cellular devices, ingesting live cellular broadcast telemetry (MCC, MNC, LAC, Cell_ID, RSSI/RSRP), resolving physical tower coordinates via OpenCellID and local verified datasets, and visualizing the latest known cell-tower locations on an interactive Leaflet.js dashboard.
+`AIR BOT` is an open-source, production-grade anti-theft and telecom recovery platform for tracking cellular devices via base-station airwaves. It ingests live cellular telemetry (MCC, MNC, LAC, Cell ID, RSSI) via online HTTPS and offline out-of-band SMS, resolves physical tower coordinates via OpenCellID and local verified catalogs, and visualizes device locations on an interactive Leaflet.js dashboard.
 
 ---
 

@@ -20,3 +20,4 @@ A lightweight, zero-battery Android background sentinel service designed for dev
    ```
 4. Enter your CellSentinel Server URL, Device Token, IMEI, and Emergency Contact.
 5. Tap **Activate Sentinel Protection** and enable **Device Administrator**.
+

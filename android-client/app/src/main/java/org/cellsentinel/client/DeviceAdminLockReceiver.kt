@@ -14,3 +14,4 @@ class DeviceAdminLockReceiver : DeviceAdminReceiver() {
         return "Warning: Disabling CellSentinel removes anti-theft tracking protection!"
     }
 }
+

@@ -12,7 +12,7 @@ from cellsentinel.database import init_db
 
 def main():
     print("=" * 75)
-    print("📡 CellSentinel - Cell-Tower Telemetry & Geolocation Platform")
+    print("📡 AIR BOT - Cellular Telemetry & Lost Device Recovery Engine")
     print("=" * 75)
     print(f"[*] Platform Version : {settings.APP_VERSION}")
     print(f"[*] Database URL     : {settings.DATABASE_URL}")
