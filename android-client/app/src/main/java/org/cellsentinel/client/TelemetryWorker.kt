@@ -113,7 +113,7 @@ object TelemetryWorker {
                 .post(body)
                 .build()
 
-            httpClient.newCall(request).execute().use { response ->
+            httpClient.newCall(request).execute().use { response: okhttp3.Response ->
                 Log.i("CellSentinel", "HTTPS Beacon success: ${response.code}")
             }
         } else {

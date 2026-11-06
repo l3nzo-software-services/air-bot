@@ -42,3 +42,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Android
+.gradle/
+local.properties
+*.apk
+*.aab
+

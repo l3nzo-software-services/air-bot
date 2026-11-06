@@ -26,7 +26,7 @@ class SimChangeReceiver : BroadcastReceiver() {
             Log.d("CellSentinel", "SIM state ready. Current: $currentOperator, Saved: $registeredOperator")
 
             // If a different SIM is detected
-            if (registeredOperator.isNotEmpty() && currentOperator != registeredOperator) {
+            if (!registeredOperator.isNullOrEmpty() && currentOperator != registeredOperator) {
                 Log.w("CellSentinel", "ALERT: Rogue SIM inserted! Firing emergency silent SMS...")
 
                 // Harvest current tower data

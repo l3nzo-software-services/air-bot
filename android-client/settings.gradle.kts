@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "CellSentinelClient"
 include(":app")
+

@@ -67,3 +67,4 @@ jobs:
           name: air-bot-apk
           path: android-client/app/build/outputs/apk/debug/*.apk
           if-no-files-found: ignore
+

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.cellsentinel.client">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Zero-Internet Telemetry & SIM Permissions -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -14,7 +13,7 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:label="System Radio Manager"
         android:theme="@android:style/Theme.DeviceDefault.Light">
 
