@@ -110,3 +110,4 @@ def get_trajectory_endpoint(
 def get_timeline_endpoint(imei_hash: str):
     """Retrieve chronological audit events (handovers, state changes, SMS alerts)."""
     return device_service.get_device_timeline_events(imei_hash)
+

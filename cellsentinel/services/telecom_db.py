@@ -179,3 +179,4 @@ def synthesize_offline_coordinates(
     carrier = lookup_carrier(mcc, mnc)
 
     return lat, lon, range_m, carrier
+

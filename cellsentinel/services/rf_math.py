@@ -136,3 +136,4 @@ def forward_geodesic_offset(
         round(math.degrees(dest_lat_rad), 6),
         round(math.degrees(dest_lon_rad), 6)
     )
+

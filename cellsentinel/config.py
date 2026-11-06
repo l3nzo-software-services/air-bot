@@ -1,44 +1,43 @@
 """
-Configuration settings for CellSentinel.
+Configuration management for CellSentinel.
+Loads settings from environment variables with sensible production defaults.
 """
 
 import os
 from pathlib import Path
 from typing import Optional
-from pydantic import BaseModel, Field
 
 
-class Settings(BaseModel):
-    """System configuration parameters."""
+class Settings:
+    """Application settings and telecom parameters."""
 
-    # Server settings
-    HOST: str = Field(default_factory=lambda: os.getenv("HOST", "0.0.0.0"))
-    PORT: int = Field(default_factory=lambda: int(os.getenv("PORT", "8000")))
-    DEBUG: bool = Field(default_factory=lambda: os.getenv("DEBUG", "true").lower() in ("true", "1", "yes"))
     APP_NAME: str = "CellSentinel"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "2.0.0"
+
+    # Base directories
+    BASE_DIR: Path = Path(__file__).resolve().parent.parent
+    DATA_DIR: Path = BASE_DIR / "data"
 
     # Database
-    DATABASE_PATH: str = Field(default_factory=lambda: os.getenv("DATABASE_PATH", "cellsentinel.db"))
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/cellsentinel_platform.db")
 
-    # External Geolocation Providers (optional)
-    OPENCELLID_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("OPENCELLID_API_KEY") or None)
-    OPENCELLID_BASE_URL: str = "https://opencellid.org/cell/get"
-    MLS_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("MLS_API_KEY") or None)
-    MLS_BASE_URL: str = "https://location.services.mozilla.com/v1/geolocate"
-    UNWIRED_API_KEY: Optional[str] = Field(default_factory=lambda: os.getenv("UNWIRED_API_KEY") or None)
-    UNWIRED_BASE_URL: str = "https://us1.unwiredlabs.com/v2/process.php"
+    # OpenCellID API Integration
+    OPENCELLID_API_KEY: Optional[str] = os.getenv("OPENCELLID_API_KEY", None)
+    OPENCELLID_BASE_URL: str = os.getenv("OPENCELLID_BASE_URL", "https://opencellid.org/cell/get")
+    API_TIMEOUT_SECONDS: float = float(os.getenv("API_TIMEOUT_SECONDS", "4.0"))
+    API_MAX_RETRIES: int = int(os.getenv("API_MAX_RETRIES", "2"))
 
-    # RF Propagation parameters
-    REFERENCE_POWER_DBM: float = Field(default_factory=lambda: float(os.getenv("REFERENCE_POWER_DBM", "-42.0")))
-    PATH_LOSS_EXPONENT: float = Field(default_factory=lambda: float(os.getenv("PATH_LOSS_EXPONENT", "3.2")))
-    MIN_ACCURACY_RADIUS_METERS: float = Field(default_factory=lambda: float(os.getenv("MIN_ACCURACY_RADIUS_METERS", "120.0")))
-    MAX_ACCURACY_RADIUS_METERS: float = Field(default_factory=lambda: float(os.getenv("MAX_ACCURACY_RADIUS_METERS", "4500.0")))
-    DEFAULT_ACCURACY_RADIUS_METERS: float = Field(default_factory=lambda: float(os.getenv("DEFAULT_ACCURACY_RADIUS_METERS", "850.0")))
+    # Security
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "cellsentinel-telecom-secret-salt-2026")
+    API_TOKEN_SALT: str = "CellSentinel-Token-Salt-v2"
 
-    # Base directory
-    BASE_DIR: Path = Path(__file__).resolve().parent.parent
+    # Server Settings
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", "8000"))
+    DEBUG: bool = os.getenv("DEBUG", "false").lower() in ("true", "1", "yes")
+
+    # Verified Reference Data File
+    VERIFIED_TOWERS_FILE: Path = DATA_DIR / "verified_towers.json"
 
 
-# Singleton settings instance
 settings = Settings()

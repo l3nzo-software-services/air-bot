@@ -234,3 +234,4 @@ async def seed_demo():
         "secure_device_imei_hash": dev2.imei_hash,
         "message": "Demo devices and realistic tower telemetry trail seeded successfully."
     }
+

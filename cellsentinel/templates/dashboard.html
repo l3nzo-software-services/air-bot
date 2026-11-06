@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CellSentinel | Cell-Tower Telemetry & Device Visualization</title>
+    <!-- Leaflet.js Map Assets -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        :root {
+            --bg-page: #0a0e17;
+            --bg-surface: #111827;
+            --bg-card: #182235;
+            --border-color: #26354d;
+            --accent-cyan: #06b6d4;
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --text-dim: #64748b;
+            --font-mono: "SF Mono", "JetBrains Mono", Consolas, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Header */
+        header {
+            background: linear-gradient(180deg, #152238 0%, #0e1726 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .brand-logo {
+            width: 32px;
+            height: 32px;
+            background: radial-gradient(circle, var(--accent-cyan) 30%, transparent 70%);
+            border: 2px solid var(--accent-cyan);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-pill {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            color: var(--accent-cyan);
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            margin-left: 0.4rem;
+        }
+
+        /* Search Bar & Actions */
+        .controls-section {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .search-wrapper {
+            position: relative;
+            width: 380px;
+        }
+
+        .search-input {
+            width: 100%;
+            background: #080c14;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.5rem 0.85rem 0.5rem 2.2rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.5rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-outline {
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            color: var(--accent-cyan);
+        }
+
+        .btn-outline:hover {
+            background: rgba(6, 182, 212, 0.25);
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            color: var(--accent-emerald);
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+        }
+
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-emerald);
+            box-shadow: 0 0 8px var(--accent-emerald);
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Telecom Engineering Notice Banner */
+        .telecom-notice {
+            background: #0f172a;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.45rem 1.5rem;
+            font-size: 0.72rem;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .telecom-notice b {
+            color: var(--accent-amber);
+        }
+
+        /* Main Viewport Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Left Device Card & Telemetry Panel */
+        .left-drawer {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1.25rem;
+            gap: 1.25rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .device-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .status-pill {
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .status-inactive {
+            background: rgba(244, 63, 94, 0.2);
+            color: #fda4af;
+            border: 1px solid rgba(244, 63, 94, 0.4);
+        }
+
+        .id-badge {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 0.75rem;
+            word-break: break-all;
+        }
+
+        .carrier-box {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+        }
+
+        .carrier-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-sub);
+        }
+
+        .carrier-value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #93c5fd;
+            margin-top: 0.2rem;
+        }
+
+        .telecom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .telecom-cell {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 0.65rem;
+            border-radius: 6px;
+        }
+
+        .cell-label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 0.2rem;
+        }
+
+        .cell-val {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* History Table */
+        .history-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-sub);
+            margin-bottom: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            padding: 0.45rem 0.65rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Map Section */
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #070b14;
+        }
+
+        /* Radar Pin CSS */
+        .radar-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .radar-core-circle {
+            width: 22px;
+            height: 22px;
+            background: var(--accent-rose);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            z-index: 10;
+        }
+
+        .radar-wave {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-rose);
+            animation: radar-burst 2s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+        }
+
+        @keyframes radar-burst {
+            0% { transform: scale(0.4); opacity: 1; }
+            100% { transform: scale(2.8); opacity: 0; }
+        }
+
+        /* Modals */
+        .modal-shade {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal-shade.active {
+            display: flex;
+        }
+
+        .modal-window {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .modal-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .form-group {
+            margin-bottom: 0.85rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .form-control {
+            width: 100%;
+            background: #080c14;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.45rem 0.75rem;
+            border-radius: 5px;
+            font-size: 0.82rem;
+            font-family: var(--font-mono);
+        }
+
+        .chip-container {
+            display: flex;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin-top: 0.35rem;
+        }
+
+        .chip-preset {
+            font-size: 0.68rem;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-sub);
+        }
+
+        .chip-preset:hover {
+            background: rgba(6, 182, 212, 0.2);
+            color: var(--accent-cyan);
+        }
+
+        .error-banner {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            color: #fca5a5;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            display: none;
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand-section">
+            <div class="brand-logo">📡</div>
+            <div>
+                <span class="brand-title">CellSentinel</span>
+                <span class="brand-pill">Telecom Geolocation</span>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input id="searchInput" type="text" class="search-input" placeholder="Search IMEI Hash or Device ID..." value="">
+            </div>
+            <button id="btnSearch" class="btn">Search</button>
+            <button id="btnOpenRegister" class="btn btn-outline">+ Register Device</button>
+            <button id="btnOpenIngest" class="btn btn-outline">⚡ Ingest Telemetry</button>
+            <div class="live-badge">
+                <span class="pulse-dot"></span>
+                <span>SSE LIVE</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Telecom Physics Disclaimer -->
+    <div class="telecom-notice">
+        <span>⚠️ <b>TELECOM NOTICE:</b> A cell tower's coordinates represent the <b>fixed antenna location</b>, not the physical location of the mobile device. Device proximity is bounded by the broadcast coverage radius.</span>
+    </div>
+
+    <!-- Workspace Grid -->
+    <main class="main-grid">
+
+        <!-- Left Drawer -->
+        <aside class="left-drawer">
+            <div id="errorBanner" class="error-banner"></div>
+
+            <!-- Device Information Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div id="cardDeviceName" class="device-title">Select a Device</div>
+                        <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 2px;">Registered Cellular Terminal</div>
+                    </div>
+                    <span id="cardDeviceStatus" class="status-pill status-active">ACTIVE</span>
+                </div>
+
+                <div class="id-badge" id="cardDeviceId">ID: --</div>
+
+                <div class="carrier-box">
+                    <div class="carrier-label">Connected Network Operator</div>
+                    <div id="cardCarrierName" class="carrier-value">Awaiting Telemetry...</div>
+                </div>
+
+                <div class="telecom-grid">
+                    <div class="telecom-cell">
+                        <div class="cell-label">Cell Tower ID (CID)</div>
+                        <div id="cardCellId" class="cell-val">----</div>
+                    </div>
+                    <div class="telecom-cell">
+                        <div class="cell-label">Location Area (LAC)</div>
+                        <div id="cardLac" class="cell-val">----</div>
+                    </div>
+                    <div class="telecom-cell">
+                        <div class="cell-label">MCC / MNC</div>
+                        <div id="cardMccMnc" class="cell-val">--- / --</div>
+                    </div>
+                    <div class="telecom-cell">
+                        <div class="cell-label">Signal Strength (RSSI)</div>
+                        <div id="cardRssi" class="cell-val" style="color:var(--accent-cyan);">-- dBm</div>
+                    </div>
+                    <div class="telecom-cell">
+                        <div class="cell-label">Coverage Radius</div>
+                        <div id="cardAccuracy" class="cell-val">-- m</div>
+                    </div>
+                    <div class="telecom-cell">
+                        <div class="cell-label">Location Source</div>
+                        <div id="cardSource" class="cell-val" style="color:#a5b4fc;">----</div>
+                    </div>
+                </div>
+
+                <div class="telecom-cell" style="margin-bottom: 0.75rem;">
+                    <div class="cell-label">Tower Coordinates</div>
+                    <div id="cardCoords" class="cell-val" style="font-size: 0.78rem;">Lat: --.----, Lon: --.----</div>
+                </div>
+
+                <div class="telecom-cell">
+                    <div class="cell-label">Last Seen Timestamp</div>
+                    <div id="cardLastSeen" class="cell-val" style="font-size: 0.75rem;">Never</div>
+                </div>
+            </div>
+
+            <!-- Telemetry History -->
+            <div class="card">
+                <div class="history-title">
+                    <span>Tower Observation History</span>
+                    <span id="historyCount" style="color: var(--accent-cyan); font-family: var(--font-mono);">0 Entries</span>
+                </div>
+                <div id="historyContainer" class="history-container">
+                    <div style="font-size: 0.72rem; color: var(--text-dim); text-align: center; padding: 1rem;">No telemetry recorded yet.</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Map Viewport -->
+        <section id="map"></section>
+
+    </main>
+
+    <!-- Modal: Register Device -->
+    <div id="modalRegister" class="modal-shade">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3 class="modal-title">Register Authorized Hardware Identity</h3>
+                <span id="btnCloseRegister" style="cursor: pointer; font-size: 1.25rem;">&times;</span>
+            </div>
+            <form id="formRegister">
+                <div class="form-group">
+                    <label class="form-label">IMEI or IMEI SHA-256 Hash *</label>
+                    <input id="regImei" type="text" class="form-control" placeholder="15-digit raw IMEI or 64-char hash" required>
+                    <small style="font-size:0.65rem; color:var(--text-dim);">Raw IMEIs are automatically hashed with SHA-256 for privacy protection.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Device Name / Model *</label>
+                    <input id="regName" type="text" class="form-control" placeholder="e.g. Google Pixel 8 Pro" required>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+                    <button type="submit" class="btn">Register Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Ingest Telemetry -->
+    <div id="modalIngest" class="modal-shade">
+        <div class="modal-window">
+            <div class="modal-header">
+                <h3 class="modal-title">Submit Cellular Tower Telemetry</h3>
+                <span id="btnCloseIngest" style="cursor: pointer; font-size: 1.25rem;">&times;</span>
+            </div>
+            <form id="formIngest">
+                <div class="form-group">
+                    <label class="form-label">Target Device ID or IMEI Hash *</label>
+                    <input id="ingestDeviceId" type="text" class="form-control" placeholder="Device ID or 64-char hash" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Device API Key (Authentication Token) *</label>
+                    <input id="ingestApiKey" type="password" class="form-control" placeholder="Device private API key" required>
+                    <small style="font-size:0.65rem; color:var(--text-dim);">Required: Telemetry is rejected without valid device authentication.</small>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">MCC (Country)</label>
+                        <input id="ingestMcc" type="number" class="form-control" value="404" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">MNC (Network)</label>
+                        <input id="ingestMnc" type="number" class="form-control" value="45" required>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">LAC (Location Area)</label>
+                        <input id="ingestLac" type="number" class="form-control" value="1234" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Cell_ID (Tower ID)</label>
+                        <input id="ingestCellId" type="number" class="form-control" value="56789" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Signal Strength (dBm)</label>
+                    <input id="ingestRssi" type="number" step="0.5" class="form-control" value="-75">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Verified Reference Presets:</label>
+                    <div class="chip-container">
+                        <span class="chip-preset" onclick="setIngestPreset(404, 45, 1234, 56789, -72)">Connaught Place (56789)</span>
+                        <span class="chip-preset" onclick="setIngestPreset(404, 45, 1234, 5678, -82)">Barakhamba (5678)</span>
+                        <span class="chip-preset" onclick="setIngestPreset(404, 45, 1234, 5679, -91)">Mandi House (5679)</span>
+                        <span class="chip-preset" onclick="setIngestPreset(404, 20, 1234, 9901, -68)">Jio 5G (9901)</span>
+                        <span class="chip-preset" onclick="setIngestPreset(310, 410, 8910, 3421, -74)">AT&T Times Sq NYC</span>
+                        <span class="chip-preset" onclick="setIngestPreset(999, 99, 9999, 99999, -85)">Unknown Tower (Test Unresolved)</span>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+                    <button type="submit" class="btn">POST /api/telemetry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Frontend Script -->
+    <script>
+        let map;
+        let towerMarker = null;
+        let accuracyCircle = null;
+        let selectedDevice = null;
+        let activeApiKey = localStorage.getItem("cellsentinel_active_key") || "";
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initLeafletMap();
+            setupEventHandlers();
+            initSSE();
+            autoLoadFirstDevice();
+        });
+
+        function initLeafletMap() {
+            // Default center
+            map = L.map("map", {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([28.6315, 77.2167], 14);
+
+            // Dark cartography tile layer
+            L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+                maxZoom: 19,
+                subdomains: "abcd"
+            }).addTo(map);
+
+            L.control.scale({ imperial: false, position: "bottomright" }).addTo(map);
+        }
+
+        async function autoLoadFirstDevice() {
+            try {
+                const res = await fetch("/api/devices");
+                if (res.ok) {
+                    const devices = await res.json();
+                    if (devices.length > 0) {
+                        loadDevice(devices[0]);
+                        document.getElementById("searchInput").value = devices[0].imei_hash;
+                    }
+                }
+            } catch (e) {
+                console.error("Auto load error:", e);
+            }
+        }
+
+        async function searchDevice(query) {
+            hideError();
+            if (!query) {
+                showError("Please enter an IMEI hash or Device ID to search.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/dashboard/search?q=${encodeURIComponent(query)}`);
+                if (!res.ok) {
+                    showError("Search failed with server error.");
+                    return;
+                }
+                const devices = await res.json();
+                if (devices.length === 0) {
+                    showError(`No registered device found matching "${query}".`);
+                    return;
+                }
+                loadDevice(devices[0]);
+            } catch (err) {
+                showError("Network error while searching: " + err.message);
+            }
+        }
+
+        function loadDevice(dev) {
+            selectedDevice = dev;
+
+            // Render Card
+            document.getElementById("cardDeviceName").innerText = dev.device_name;
+            document.getElementById("cardDeviceStatus").innerText = dev.device_status;
+            document.getElementById("cardDeviceStatus").className = `status-pill ${dev.device_status === 'ACTIVE' ? 'status-active' : 'status-inactive'}`;
+            document.getElementById("cardDeviceId").innerText = `IMEI HASH: ${dev.imei_hash}`;
+            document.getElementById("cardLastSeen").innerText = formatTimestamp(dev.last_seen_timestamp);
+
+            const tower = dev.latest_tower;
+            if (tower) {
+                document.getElementById("cardCarrierName").innerText = tower.carrier_name || "Cellular Provider";
+                document.getElementById("cardCellId").innerText = tower.cell_id;
+                document.getElementById("cardLac").innerText = tower.lac;
+                document.getElementById("cardMccMnc").innerText = `${tower.mcc} / ${tower.mnc}`;
+                document.getElementById("cardRssi").innerText = dev.latest_signal_strength ? `${dev.latest_signal_strength} dBm` : "-- dBm";
+                document.getElementById("cardAccuracy").innerText = tower.accuracy_radius ? `±${tower.accuracy_radius} m` : "Unavailable";
+                document.getElementById("cardSource").innerText = tower.location_source;
+
+                if (tower.latitude !== null && tower.longitude !== null) {
+                    document.getElementById("cardCoords").innerText = `Lat: ${tower.latitude.toFixed(5)}, Lon: ${tower.longitude.toFixed(5)}`;
+                    renderTowerOnMap(tower);
+                } else {
+                    document.getElementById("cardCoords").innerText = "UNRESOLVED - No Coordinates Available";
+                    clearMapVisuals();
+                }
+            } else {
+                document.getElementById("cardCarrierName").innerText = "No Telemetry Recorded";
+                document.getElementById("cardCellId").innerText = "----";
+                document.getElementById("cardLac").innerText = "----";
+                document.getElementById("cardMccMnc").innerText = "--- / --";
+                document.getElementById("cardRssi").innerText = "-- dBm";
+                document.getElementById("cardAccuracy").innerText = "-- m";
+                document.getElementById("cardSource").innerText = "None";
+                document.getElementById("cardCoords").innerText = "Awaiting First Ping";
+                clearMapVisuals();
+            }
+
+            // Populate ingest form defaults
+            document.getElementById("ingestDeviceId").value = dev.imei_hash;
+            if (activeApiKey) {
+                document.getElementById("ingestApiKey").value = activeApiKey;
+            }
+
+            // Load History
+            loadHistory(dev.id);
+        }
+
+        function renderTowerOnMap(tower) {
+            clearMapVisuals();
+
+            const pos = [tower.latitude, tower.longitude];
+
+            // 1. Draw Translucent accuracy circle ONLY when reliable accuracy exists
+            if (tower.accuracy_radius && tower.accuracy_radius > 0) {
+                accuracyCircle = L.circle(pos, {
+                    radius: tower.accuracy_radius,
+                    color: "#06b6d4",
+                    fillColor: "#06b6d4",
+                    fillOpacity: 0.16,
+                    weight: 2,
+                    dashArray: "4, 4"
+                }).addTo(map);
+            }
+
+            // 2. Display Pulsing Tower Pin clearly labeled as CELL TOWER LOCATION
+            const icon = L.divIcon({
+                className: "radar-marker",
+                html: `
+                    <div class="radar-wave"></div>
+                    <div class="radar-core-circle">📡</div>
+                `,
+                iconSize: [44, 44],
+                iconAnchor: [22, 22]
+            });
+
+            towerMarker = L.marker(pos, { icon: icon }).addTo(map);
+
+            const popupContent = `
+                <div style="font-family:sans-serif; color:#0f172a; min-width:200px;">
+                    <div style="font-size:10px; font-weight:800; color:#e11d48; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:2px;">
+                        CELL TOWER LOCATION (FIXED ANTENNA)
+                    </div>
+                    <h4 style="margin:0 0 4px 0; color:#1e293b;">Tower ID: ${tower.cell_id}</h4>
+                    <div style="font-size:12px; margin-bottom:2px;"><b>Carrier:</b> ${tower.carrier_name || 'Unknown'}</div>
+                    <div style="font-size:12px; margin-bottom:2px;"><b>LAC:</b> ${tower.lac} | <b>MCC/MNC:</b> ${tower.mcc}/${tower.mnc}</div>
+                    <div style="font-size:12px; margin-bottom:2px;"><b>Coordinates:</b> ${tower.latitude.toFixed(5)}, ${tower.longitude.toFixed(5)}</div>
+                    <div style="font-size:12px; margin-bottom:2px;"><b>Accuracy Envelope:</b> ${tower.accuracy_radius ? `±${tower.accuracy_radius}m` : 'Not Reported'}</div>
+                    <div style="font-size:11px; color:#475569; margin-top:4px;"><b>Source:</b> ${tower.location_source}</div>
+                </div>
+            `;
+            towerMarker.bindPopup(popupContent).openPopup();
+
+            map.flyTo(pos, 15, { animate: true, duration: 1.0 });
+        }
+
+        function clearMapVisuals() {
+            if (towerMarker) {
+                map.removeLayer(towerMarker);
+                towerMarker = null;
+            }
+            if (accuracyCircle) {
+                map.removeLayer(accuracyCircle);
+                accuracyCircle = null;
+            }
+        }
+
+        async function loadHistory(deviceId) {
+            try {
+                const res = await fetch(`/api/telemetry/${deviceId}/history`);
+                if (!res.ok) return;
+                const items = await res.json();
+                renderHistory(items);
+            } catch (e) {
+                console.error("Error loading history:", e);
+            }
+        }
+
+        function renderHistory(items) {
+            const container = document.getElementById("historyContainer");
+            container.innerHTML = "";
+            document.getElementById("historyCount").innerText = `${items.length} Entries`;
+
+            if (items.length === 0) {
+                container.innerHTML = `<div style="font-size: 0.72rem; color: var(--text-dim); text-align: center; padding: 1rem;">No telemetry recorded yet.</div>`;
+                return;
+            }
+
+            items.forEach(h => {
+                const div = document.createElement("div");
+                div.className = "history-item";
+                const rssi = h.signal_strength !== null ? `${h.signal_strength} dBm` : "--";
+                const acc = h.accuracy_radius !== null ? `±${h.accuracy_radius}m` : "No Rad";
+                const src = h.location_source;
+                div.innerHTML = `
+                    <div>
+                        <b>CID ${h.cell_id}</b> (LAC ${h.lac})
+                        <div style="font-size:10px; color:var(--text-dim);">${formatTimestamp(h.timestamp)}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="color:var(--accent-cyan); font-weight:700;">${rssi}</span> | 
+                        <span style="color:#a5b4fc;">${src}</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function setupEventHandlers() {
+            // Search handlers
+            document.getElementById("btnSearch").onclick = () => {
+                searchDevice(document.getElementById("searchInput").value.trim());
+            };
+            document.getElementById("searchInput").onkeydown = (e) => {
+                if (e.key === "Enter") searchDevice(e.target.value.trim());
+            };
+
+            // Register Modal
+            const modalReg = document.getElementById("modalRegister");
+            document.getElementById("btnOpenRegister").onclick = () => modalReg.classList.add("active");
+            document.getElementById("btnCloseRegister").onclick = () => modalReg.classList.remove("active");
+
+            document.getElementById("formRegister").onsubmit = async (e) => {
+                e.preventDefault();
+                const imei = document.getElementById("regImei").value.trim();
+                const name = document.getElementById("regName").value.trim();
+
+                try {
+                    const res = await fetch("/api/devices", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ imei: imei, device_name: name })
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json();
+                        alert(`Registration failed: ${err.detail}`);
+                        return;
+                    }
+
+                    const data = await res.json();
+                    modalReg.classList.remove("active");
+                    document.getElementById("formRegister").reset();
+
+                    // Save active API key
+                    activeApiKey = data.api_key;
+                    localStorage.setItem("cellsentinel_active_key", activeApiKey);
+
+                    alert(`Device "${data.device_name}" registered successfully!\n\nIMPORTANT - SAVE YOUR DEVICE API KEY:\n${data.api_key}\n\n(This key authenticates incoming telemetry submissions)`);
+
+                    document.getElementById("searchInput").value = data.imei_hash;
+                    searchDevice(data.imei_hash);
+                } catch (err) {
+                    alert("Error registering device: " + err.message);
+                }
+            };
+
+            // Ingest Modal
+            const modalIngest = document.getElementById("modalIngest");
+            document.getElementById("btnOpenIngest").onclick = () => modalIngest.classList.add("active");
+            document.getElementById("btnCloseIngest").onclick = () => modalIngest.classList.remove("active");
+
+            document.getElementById("formIngest").onsubmit = async (e) => {
+                e.preventDefault();
+                const payload = {
+                    device_id: document.getElementById("ingestDeviceId").value.trim(),
+                    mcc: parseInt(document.getElementById("ingestMcc").value),
+                    mnc: parseInt(document.getElementById("ingestMnc").value),
+                    lac: parseInt(document.getElementById("ingestLac").value),
+                    cell_id: parseInt(document.getElementById("ingestCellId").value),
+                    signal_strength: parseFloat(document.getElementById("ingestRssi").value)
+                };
+                const apiKey = document.getElementById("ingestApiKey").value.trim();
+
+                try {
+                    const res = await fetch("/api/telemetry", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Device-Token": apiKey
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json();
+                        alert(`Telemetry ingestion failed: ${err.detail}`);
+                        return;
+                    }
+
+                    const respData = await res.json();
+                    modalIngest.classList.remove("active");
+                    searchDevice(payload.device_id);
+                } catch (err) {
+                    alert("Submission error: " + err.message);
+                }
+            };
+        }
+
+        function setIngestPreset(mcc, mnc, lac, cid, rssi) {
+            document.getElementById("ingestMcc").value = mcc;
+            document.getElementById("ingestMnc").value = mnc;
+            document.getElementById("ingestLac").value = lac;
+            document.getElementById("ingestCellId").value = cid;
+            document.getElementById("ingestRssi").value = rssi;
+        }
+
+        function initSSE() {
+            const evtSource = new EventSource("/api/dashboard/events");
+            evtSource.addEventListener("message", (e) => {
+                try {
+                    const payload = JSON.parse(e.data);
+                    if (payload.event === "TELEMETRY_INGESTED") {
+                        const data = payload.data;
+                        if (selectedDevice && (selectedDevice.imei_hash === data.imei_hash || selectedDevice.id === data.device_id)) {
+                            searchDevice(data.imei_hash);
+                        }
+                    }
+                } catch (err) {
+                    console.error("SSE parse error:", err);
+                }
+            });
+            evtSource.onerror = () => {
+                setTimeout(initSSE, 5000);
+            };
+        }
+
+        function showError(msg) {
+            const el = document.getElementById("errorBanner");
+            el.innerText = msg;
+            el.style.display = "block";
+        }
+
+        function hideError() {
+            document.getElementById("errorBanner").style.display = "none";
+        }
+
+        function formatTimestamp(ts) {
+            if (!ts) return "Never";
+            try {
+                return new Date(ts).toLocaleString();
+            } catch {
+                return ts;
+            }
+        }
+    </script>
+</body>
+</html>

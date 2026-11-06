@@ -95,3 +95,4 @@ async def sms_webhook_endpoint(request: Request):
 def get_recent_telemetry_endpoint(limit: int = 50):
     """Retrieve recent cellular telemetry logs across all registered devices."""
     return telemetry_service.get_latest_telemetry_logs(limit=limit)
+

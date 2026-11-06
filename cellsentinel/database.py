@@ -1,125 +1,93 @@
 """
-Database engine and SQLite persistence layer for CellSentinel.
+Database management and SQLAlchemy ORM lifecycle for CellSentinel.
 """
 
-import sqlite3
-import os
-from contextlib import contextmanager
+import json
+import logging
+from datetime import datetime, timezone
 from typing import Generator
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+
 from cellsentinel.config import settings
 
+logger = logging.getLogger("cellsentinel.database")
 
-def get_db_path() -> str:
-    """Return database file path."""
-    return str(settings.BASE_DIR / settings.DATABASE_PATH)
+# SQLite connection args for multi-threaded FastAPI concurrency
+connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(
+    settings.DATABASE_URL,
+    connect_args=connect_args,
+    echo=settings.DEBUG
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 
-@contextmanager
-def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
-    """Yield a SQLite database connection with row factory enabled."""
-    conn = sqlite3.connect(get_db_path(), timeout=10.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
+def get_db() -> Generator[Session, None, None]:
+    """FastAPI dependency for thread-safe database sessions."""
+    db = SessionLocal()
     try:
-        yield conn
-        conn.commit()
+        yield db
+        db.commit()
     except Exception:
-        conn.rollback()
+        db.rollback()
         raise
     finally:
-        conn.close()
+        db.close()
 
 
-def init_database() -> None:
-    """Initialize database tables, indexes, and initial telecom cache."""
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
+def init_db() -> bool:
+    """
+    Initialize database schema, verify connectivity, and seed verified tower reference data.
+    Returns True upon successful verification.
+    """
+    from cellsentinel.models import CellTowerCache, Device, Telemetry
 
-        # 1. Devices table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS devices (
-                imei_hash TEXT PRIMARY KEY,
-                device_model TEXT NOT NULL,
-                owner_name TEXT NOT NULL,
-                owner_phone TEXT NOT NULL,
-                owner_email TEXT NOT NULL,
-                recovery_pin_hash TEXT,
-                state TEXT NOT NULL CHECK(state IN ('SECURE', 'LOST', 'RECOVERED')),
-                last_mcc INTEGER,
-                last_mnc INTEGER,
-                last_lac INTEGER,
-                last_cid INTEGER,
-                last_rssi REAL,
-                last_latitude REAL,
-                last_longitude REAL,
-                last_accuracy REAL,
-                last_seen_at TIMESTAMP,
-                last_transport TEXT,
-                sim_imsi_hash TEXT,
-                registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+    # Ensure parent directory exists for SQLite
+    if settings.DATABASE_URL.startswith("sqlite:///"):
+        db_path = settings.DATABASE_URL.replace("sqlite:///", "")
+        import os
+        from pathlib import Path
+        db_dir = Path(db_path).parent
+        if not db_dir.exists():
+            os.makedirs(db_dir, exist_ok=True)
 
-        # 2. Telemetry logs table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS telemetry_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_imei_hash TEXT NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                transport TEXT NOT NULL CHECK(transport IN ('HTTPS', 'SMS_OUT_OF_BAND')),
-                mcc INTEGER NOT NULL,
-                mnc INTEGER NOT NULL,
-                lac INTEGER NOT NULL,
-                cid INTEGER NOT NULL,
-                signal_strength REAL NOT NULL,
-                carrier_name TEXT,
-                radio_type TEXT DEFAULT 'LTE',
-                timing_advance INTEGER,
-                sim_status TEXT DEFAULT 'ACTIVE',
-                sim_imsi_hash TEXT,
-                latitude REAL NOT NULL,
-                longitude REAL NOT NULL,
-                accuracy_radius REAL NOT NULL,
-                resolver_source TEXT NOT NULL,
-                raw_payload TEXT,
-                FOREIGN KEY (device_imei_hash) REFERENCES devices(imei_hash) ON DELETE CASCADE
-            );
-        """)
+    # Create tables
+    Base.metadata.create_all(bind=engine)
 
-        # 3. Persistent cell tower cache table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS cell_cache (
-                mcc INTEGER NOT NULL,
-                mnc INTEGER NOT NULL,
-                lac INTEGER NOT NULL,
-                cid INTEGER NOT NULL,
-                latitude REAL NOT NULL,
-                longitude REAL NOT NULL,
-                range_meters REAL NOT NULL,
-                carrier TEXT,
-                source TEXT NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                query_count INTEGER DEFAULT 1,
-                PRIMARY KEY (mcc, mnc, lac, cid)
-            );
-        """)
+    # Verify connectivity
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT 1;")).scalar()
+        if result != 1:
+            raise RuntimeError("Database connectivity check failed.")
 
-        # 4. Incident timeline & audit events table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS incident_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_imei_hash TEXT NOT NULL,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                event_type TEXT NOT NULL,
-                severity TEXT NOT NULL CHECK(severity IN ('INFO', 'WARNING', 'CRITICAL')),
-                details TEXT NOT NULL,
-                FOREIGN KEY (device_imei_hash) REFERENCES devices(imei_hash) ON DELETE CASCADE
-            );
-        """)
+    # Seed verified reference cell towers if cache is empty
+    with SessionLocal() as session:
+        count = session.query(CellTowerCache).count()
+        if count == 0 and settings.VERIFIED_TOWERS_FILE.exists():
+            try:
+                with open(settings.VERIFIED_TOWERS_FILE, "r", encoding="utf-8") as f:
+                    towers = json.load(f)
+                    now_utc = datetime.now(timezone.utc)
+                    for t in towers:
+                        cache_entry = CellTowerCache(
+                            mcc=t["mcc"],
+                            mnc=t["mnc"],
+                            lac=t["lac"],
+                            cell_id=t["cell_id"],
+                            latitude=t["latitude"],
+                            longitude=t["longitude"],
+                            accuracy_radius=t.get("accuracy_radius"),
+                            source="LOCAL_VERIFIED",
+                            last_updated=now_utc
+                        )
+                        session.add(cache_entry)
+                    session.commit()
+            except Exception as e:
+                session.rollback()
+                logger.warning(f"Could not load verified towers reference file: {e}")
 
-        # Indexes for fast querying
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_device ON telemetry_logs(device_imei_hash, timestamp DESC);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_tower ON telemetry_logs(mcc, mnc, lac, cid);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_device ON incident_events(device_imei_hash, timestamp DESC);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_devices_state ON devices(state);")
+    return True

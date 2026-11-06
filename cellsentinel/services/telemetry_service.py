@@ -1,337 +1,166 @@
 """
-Cellular Telemetry Ingestion & Geolocation Pipeline Service.
-Coordinates telemetry receipt (HTTPS & Out-of-Band SMS), tower resolution,
-transition detection, SIM swap alerts, trajectory logging, and real-time event dispatch.
+Telemetry Ingestion & Processing Pipeline Service.
+Coordinates device authentication, validation, tower resolution, database persistence,
+and real-time event broadcasting to the web dashboard.
 """
 
 import asyncio
 from datetime import datetime, timezone
-import hashlib
+import json
+import logging
 from typing import List, Optional, Dict, Any
+from sqlalchemy.orm import Session
 
-from cellsentinel.database import get_db_connection
-from cellsentinel.models import (
-    CellTowerTelemetry,
-    TransportType,
-    DeviceState,
-    TelemetryRecord,
-    DeviceRegisterRequest
+from cellsentinel.models import Device, Telemetry
+from cellsentinel.schemas import (
+    TelemetryIngestRequest,
+    TelemetryIngestResponse,
+    TowerLocation,
+    TelemetryHistoryItem
 )
-from cellsentinel.services.device_service import get_device_by_hash, register_device
-from cellsentinel.services.resolver import resolve_cell_tower
-from cellsentinel.services.rf_math import haversine_distance_meters
-from cellsentinel.services.telecom_db import lookup_carrier
+from cellsentinel.services.device_service import authenticate_device
+from cellsentinel.services.tower_resolver import resolve_cell_tower, get_carrier_name
+
+logger = logging.getLogger("cellsentinel.telemetry")
+
+# In-memory subscriber queues for Server-Sent Events (SSE)
+_sse_subscribers: List[asyncio.Queue] = []
 
 
-# In-memory subscriber list for Server-Sent Events (SSE) live updates
-_event_subscribers: List[asyncio.Queue] = []
-
-
-def register_sse_subscriber(queue: asyncio.Queue) -> None:
+def register_sse_queue(q: asyncio.Queue) -> None:
     """Register an SSE listener queue."""
-    _event_subscribers.append(queue)
+    _sse_subscribers.append(q)
 
 
-def unregister_sse_subscriber(queue: asyncio.Queue) -> None:
+def unregister_sse_queue(q: asyncio.Queue) -> None:
     """Remove an SSE listener queue."""
-    if queue in _event_subscribers:
-        _event_subscribers.remove(queue)
+    if q in _sse_subscribers:
+        _sse_subscribers.remove(q)
 
 
-async def broadcast_live_event(event_data: Dict[str, Any]) -> None:
-    """Broadcast telemetry event to all active dashboard SSE connections."""
-    for q in list(_event_subscribers):
+async def broadcast_event(event_type: str, data: Dict[str, Any]) -> None:
+    """Broadcast real-time event to all connected dashboard SSE streams."""
+    message = json.dumps({"event": event_type, "data": data})
+    for q in list(_sse_subscribers):
         try:
-            await q.put(event_data)
+            await q.put(message)
         except Exception:
             pass
 
 
-async def ingest_telemetry(
-    telemetry: CellTowerTelemetry,
-    transport: TransportType = TransportType.HTTPS
-) -> TelemetryRecord:
+async def process_telemetry(
+    db: Session,
+    payload: TelemetryIngestRequest,
+    api_key: str
+) -> TelemetryIngestResponse:
     """
-    Core telemetry processing pipeline.
-    1. Verify or auto-register target device
-    2. Triangulate cellular tower & calculate dynamic accuracy radius
-    3. Detect tower handovers & distance travelled
-    4. Detect SIM IMSI swaps & out-of-band alerts
-    5. Persist telemetry and update device state
-    6. Broadcast live update to real-time dashboard
+    Ingest and process cellular tower telemetry from an authenticated device:
+    1. Authenticate registered device credentials
+    2. Resolve cell tower coordinates via resolver engine
+    3. Persist telemetry record into SQLite
+    4. Update device's last_seen_timestamp
+    5. Broadcast live update to real-time dashboard
+    6. Return structured response
     """
-    imei_hash = telemetry.imei_hash
+    # 1. Authenticate device
+    device = authenticate_device(db, payload.device_id, api_key)
 
-    # 1. Resolve Device
-    device = get_device_by_hash(imei_hash)
-    if not device:
-        # Auto-register unknown device upon first cellular ping so telemetry is preserved
-        auto_req = DeviceRegisterRequest(
-            imei_or_hash=imei_hash,
-            device_model="Discovered Cellular Terminal",
-            owner_name="Pending Emergency Verification",
-            owner_phone="+0000000000",
-            owner_email="recovery@cellsentinel.local",
-            recovery_pin="1234"
-        )
-        device = register_device(auto_req)
-
-    # 2. Resolve Cell Tower Geolocation & dynamic accuracy radius
-    resolution = await resolve_cell_tower(
-        mcc=telemetry.mcc,
-        mnc=telemetry.mnc,
-        lac=telemetry.lac,
-        cid=telemetry.cid,
-        signal_strength=telemetry.signal_strength,
-        radio_type=telemetry.radio_type or "LTE",
-        timing_advance=telemetry.timing_advance
+    # 2. Resolve cell tower location
+    tower_loc = await resolve_cell_tower(
+        db=db,
+        mcc=payload.mcc,
+        mnc=payload.mnc,
+        lac=payload.lac,
+        cell_id=payload.cell_id
     )
 
-    carrier_name = telemetry.carrier_name or resolution.carrier or lookup_carrier(telemetry.mcc, telemetry.mnc)
-    sim_imsi_hash = hashlib.sha256(telemetry.sim_imsi.encode("utf-8")).hexdigest() if telemetry.sim_imsi else device.sim_imsi_hash
+    now_utc = datetime.now(timezone.utc)
 
-    # Check for tower transition
-    is_handover = False
-    hop_distance_m = 0.0
-    if (
-        device.last_latitude is not None
-        and device.last_longitude is not None
-        and (device.last_cid != telemetry.cid or device.last_lac != telemetry.lac)
-    ):
-        is_handover = True
-        hop_distance_m = haversine_distance_meters(
-            device.last_latitude,
-            device.last_longitude,
-            resolution.latitude,
-            resolution.longitude
-        )
-
-    # Check for SIM status change
-    sim_changed = False
-    if device.sim_imsi_hash and sim_imsi_hash and device.sim_imsi_hash != sim_imsi_hash:
-        sim_changed = True
-
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-
-        # Insert telemetry log
-        cursor.execute(
-            """
-            INSERT INTO telemetry_logs (
-                device_imei_hash, transport, mcc, mnc, lac, cid, signal_strength,
-                carrier_name, radio_type, timing_advance, sim_status, sim_imsi_hash,
-                latitude, longitude, accuracy_radius, resolver_source, raw_payload
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-            """,
-            (
-                device.imei_hash,
-                transport.value,
-                telemetry.mcc,
-                telemetry.mnc,
-                telemetry.lac,
-                telemetry.cid,
-                telemetry.signal_strength,
-                carrier_name,
-                telemetry.radio_type or "LTE",
-                telemetry.timing_advance,
-                telemetry.sim_status or ("CHANGED" if sim_changed else "ACTIVE"),
-                sim_imsi_hash,
-                resolution.latitude,
-                resolution.longitude,
-                resolution.accuracy_radius,
-                resolution.source,
-                telemetry.raw_payload
-            )
-        )
-        record_id = cursor.lastrowid
-
-        # Update Device current hardware telemetry state
-        cursor.execute(
-            """
-            UPDATE devices
-            SET last_mcc = ?,
-                last_mnc = ?,
-                last_lac = ?,
-                last_cid = ?,
-                last_rssi = ?,
-                last_latitude = ?,
-                last_longitude = ?,
-                last_accuracy = ?,
-                last_seen_at = CURRENT_TIMESTAMP,
-                last_transport = ?,
-                sim_imsi_hash = COALESCE(?, sim_imsi_hash),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE imei_hash = ?;
-            """,
-            (
-                telemetry.mcc,
-                telemetry.mnc,
-                telemetry.lac,
-                telemetry.cid,
-                telemetry.signal_strength,
-                resolution.latitude,
-                resolution.longitude,
-                resolution.accuracy_radius,
-                transport.value,
-                sim_imsi_hash,
-                device.imei_hash
-            )
-        )
-
-        # Audit events for handover or alerts
-        if transport == TransportType.SMS_OUT_OF_BAND:
-            cursor.execute(
-                """
-                INSERT INTO incident_events (device_imei_hash, event_type, severity, details)
-                VALUES (?, 'OUT_OF_BAND_SMS_TELEMETRY', 'WARNING', ?);
-                """,
-                (
-                    device.imei_hash,
-                    f"Offline telemetry received via silent SMS. Tower: MCC {telemetry.mcc} MNC {telemetry.mnc} LAC {telemetry.lac} CID {telemetry.cid} (RSSI: {telemetry.signal_strength} dBm)."
-                )
-            )
-
-        if is_handover:
-            cursor.execute(
-                """
-                INSERT INTO incident_events (device_imei_hash, event_type, severity, details)
-                VALUES (?, 'CELL_TOWER_HANDOVER', 'INFO', ?);
-                """,
-                (
-                    device.imei_hash,
-                    f"Handover detected: previous CID {device.last_cid} -> current CID {telemetry.cid} (Transition distance: {round(hop_distance_m, 1)}m)."
-                )
-            )
-
-        if sim_changed:
-            cursor.execute(
-                """
-                INSERT INTO incident_events (device_imei_hash, event_type, severity, details)
-                VALUES (?, 'SIM_CARD_SWAP_DETECTED', 'CRITICAL', 'SIM IMSI mismatch detected! Possible unauthorized SIM replacement.');
-                """,
-                (device.imei_hash,)
-            )
-
-    record = TelemetryRecord(
-        id=record_id,
-        device_imei_hash=device.imei_hash,
-        timestamp=datetime.now(timezone.utc).isoformat(),
-        transport=transport,
-        mcc=telemetry.mcc,
-        mnc=telemetry.mnc,
-        lac=telemetry.lac,
-        cid=telemetry.cid,
-        signal_strength=telemetry.signal_strength,
-        carrier_name=carrier_name,
-        radio_type=telemetry.radio_type or "LTE",
-        timing_advance=telemetry.timing_advance,
-        sim_status=telemetry.sim_status or ("CHANGED" if sim_changed else "ACTIVE"),
-        sim_imsi_hash=sim_imsi_hash,
-        latitude=resolution.latitude,
-        longitude=resolution.longitude,
-        accuracy_radius=resolution.accuracy_radius,
-        resolver_source=resolution.source,
-        raw_payload=telemetry.raw_payload
+    # 3. Save telemetry in database
+    telemetry = Telemetry(
+        device_id=device.id,
+        mcc=payload.mcc,
+        mnc=payload.mnc,
+        lac=payload.lac,
+        cell_id=payload.cell_id,
+        signal_strength=payload.signal_strength,
+        latitude=tower_loc.latitude,
+        longitude=tower_loc.longitude,
+        accuracy_radius=tower_loc.accuracy_radius,
+        location_source=tower_loc.location_source,
+        timestamp=now_utc
     )
 
-    # Dispatch to live SSE listeners
+    db.add(telemetry)
+
+    # 4. Update device last seen timestamp
+    device.last_seen_timestamp = now_utc
+    db.commit()
+    db.refresh(telemetry)
+
+    # Prepare response payload
+    resp = TelemetryIngestResponse(
+        success=True,
+        device_id=device.imei_hash,
+        tower=tower_loc,
+        timestamp=now_utc,
+        message="Telemetry ingested and processed successfully."
+    )
+
+    # 5. Broadcast to dashboard SSE listeners
     asyncio.create_task(
-        broadcast_live_event({
-            "type": "TELEMETRY_INGESTED",
-            "telemetry": record.model_dump(),
-            "device": {
-                "imei_hash": device.imei_hash,
-                "device_model": device.device_model,
-                "state": device.state.value,
-                "owner_name": device.owner_name
-            }
+        broadcast_event("TELEMETRY_INGESTED", {
+            "device_id": device.id,
+            "imei_hash": device.imei_hash,
+            "device_name": device.device_name,
+            "mcc": payload.mcc,
+            "mnc": payload.mnc,
+            "lac": payload.lac,
+            "cell_id": payload.cell_id,
+            "carrier_name": tower_loc.carrier_name,
+            "signal_strength": payload.signal_strength,
+            "latitude": tower_loc.latitude,
+            "longitude": tower_loc.longitude,
+            "accuracy_radius": tower_loc.accuracy_radius,
+            "location_source": tower_loc.location_source,
+            "timestamp": now_utc.isoformat()
         })
     )
 
-    return record
+    return resp
 
 
-def get_device_trajectory(
-    imei_hash: str,
-    limit: int = 200
-) -> List[TelemetryRecord]:
-    """Retrieve chronologically ordered telemetry breadcrumb trajectory for map visualization."""
-    device = get_device_by_hash(imei_hash)
-    if not device:
-        return []
+def get_telemetry_history(
+    db: Session,
+    device_id: int,
+    limit: int = 50
+) -> List[TelemetryHistoryItem]:
+    """Retrieve chronological telemetry history for a device."""
+    records = (
+        db.query(Telemetry)
+        .filter(Telemetry.device_id == device_id)
+        .order_by(Telemetry.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
 
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT * FROM telemetry_logs
-            WHERE device_imei_hash = ?
-            ORDER BY timestamp ASC
-            LIMIT ?;
-            """,
-            (device.imei_hash, limit)
-        )
-        rows = cursor.fetchall()
-        return [
-            TelemetryRecord(
-                id=r["id"],
-                device_imei_hash=r["device_imei_hash"],
-                timestamp=str(r["timestamp"]),
-                transport=TransportType(r["transport"]),
-                mcc=r["mcc"],
-                mnc=r["mnc"],
-                lac=r["lac"],
-                cid=r["cid"],
-                signal_strength=r["signal_strength"],
-                carrier_name=r["carrier_name"],
-                radio_type=r["radio_type"],
-                timing_advance=r["timing_advance"],
-                sim_status=r["sim_status"],
-                sim_imsi_hash=r["sim_imsi_hash"],
-                latitude=r["latitude"],
-                longitude=r["longitude"],
-                accuracy_radius=r["accuracy_radius"],
-                resolver_source=r["resolver_source"],
-                raw_payload=r["raw_payload"]
+    results = []
+    for r in records:
+        carrier = get_carrier_name(r.mcc, r.mnc)
+        results.append(
+            TelemetryHistoryItem(
+                id=r.id,
+                mcc=r.mcc,
+                mnc=r.mnc,
+                lac=r.lac,
+                cell_id=r.cell_id,
+                carrier_name=carrier,
+                signal_strength=r.signal_strength,
+                latitude=r.latitude,
+                longitude=r.longitude,
+                accuracy_radius=r.accuracy_radius,
+                location_source=r.location_source,
+                timestamp=r.timestamp
             )
-            for r in rows
-        ]
-
-
-def get_latest_telemetry_logs(limit: int = 50) -> List[TelemetryRecord]:
-    """Retrieve global recent telemetry across all devices for dashboard feed."""
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT * FROM telemetry_logs
-            ORDER BY timestamp DESC
-            LIMIT ?;
-            """,
-            (limit,)
         )
-        rows = cursor.fetchall()
-        return [
-            TelemetryRecord(
-                id=r["id"],
-                device_imei_hash=r["device_imei_hash"],
-                timestamp=str(r["timestamp"]),
-                transport=TransportType(r["transport"]),
-                mcc=r["mcc"],
-                mnc=r["mnc"],
-                lac=r["lac"],
-                cid=r["cid"],
-                signal_strength=r["signal_strength"],
-                carrier_name=r["carrier_name"],
-                radio_type=r["radio_type"],
-                timing_advance=r["timing_advance"],
-                sim_status=r["sim_status"],
-                sim_imsi_hash=r["sim_imsi_hash"],
-                latitude=r["latitude"],
-                longitude=r["longitude"],
-                accuracy_radius=r["accuracy_radius"],
-                resolver_source=r["resolver_source"],
-                raw_payload=r["raw_payload"]
-            )
-            for r in rows
-        ]
+    return results

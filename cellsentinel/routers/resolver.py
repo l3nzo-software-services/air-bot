@@ -53,3 +53,4 @@ async def quick_lookup_endpoint(
         signal_strength=rssi,
         radio_type="LTE"
     )
+

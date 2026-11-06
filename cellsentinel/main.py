@@ -1,47 +1,69 @@
 """
-CellSentinel - FastAPI Application Entrypoint.
-Production-grade Lost Device Recovery & Cell-Tower Telemetry Engine.
+CellSentinel - Main Application Entrypoint.
+FastAPI application mounting modular routers, lifecycle hooks, and dashboard templates.
 """
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from cellsentinel.config import settings
-from cellsentinel.database import init_database, get_db_connection
-from cellsentinel.routers import devices, telemetry, resolver, dashboard
+from cellsentinel.database import init_db, SessionLocal
+from cellsentinel.models import Device, Telemetry
+from cellsentinel.schemas import DeviceRegisterRequest
+from cellsentinel.services.device_service import register_device
+from cellsentinel.services.tower_resolver import resolve_cell_tower
+from cellsentinel.api import devices, telemetry, dashboard
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle startup and shutdown hooks."""
-    # 1. Initialize SQLite schema
-    init_database()
+    """Application startup and shutdown hooks."""
+    # 1. Initialize SQLite schema & load verified local tower fixtures
+    init_db()
 
-    # 2. Check if database has any devices, if not auto-seed demo
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM devices;")
-        count = cursor.fetchone()[0]
+    # 2. Seed default authorized reference device if table is empty
+    with SessionLocal() as db:
+        dev_count = db.query(Device).count()
+        if dev_count == 0:
+            reg_req = DeviceRegisterRequest(
+                imei="358941098765432",
+                device_name="Google Pixel 8 Pro"
+            )
+            seeded_dev, seeded_key = register_device(db, reg_req)
 
-    if count == 0:
-        # Seed realistic demo lost device and trajectory
-        await dashboard.seed_demo()
+            # Seed initial telemetry for Connaught Place reference tower
+            resolved = await resolve_cell_tower(db, 404, 45, 1234, 56789)
+            initial_telemetry = Telemetry(
+                device_id=seeded_dev.id,
+                mcc=404,
+                mnc=45,
+                lac=1234,
+                cell_id=56789,
+                signal_strength=-72.0,
+                latitude=resolved.latitude,
+                longitude=resolved.longitude,
+                accuracy_radius=resolved.accuracy_radius,
+                location_source=resolved.location_source,
+                timestamp=seeded_dev.registration_timestamp
+            )
+            db.add(initial_telemetry)
+            seeded_dev.last_seen_timestamp = seeded_dev.registration_timestamp
+            db.commit()
 
     yield
 
 
 app = FastAPI(
-    title="CellSentinel",
-    description="Production-grade Lost Device Recovery & Cell-Tower Telemetry Engine",
+    title=settings.APP_NAME,
+    description="Cell-Tower Telemetry Ingestion & OpenCellID Geolocation Engine",
     version=settings.APP_VERSION,
     lifespan=lifespan
 )
 
-# Enable CORS for cross-origin integration
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,34 +72,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static assets
-static_dir = settings.BASE_DIR / "cellsentinel" / "static"
-static_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-
-# Include Routers
+# Include Modular Routers
 app.include_router(devices.router)
 app.include_router(telemetry.router)
-app.include_router(resolver.router)
 app.include_router(dashboard.router)
 
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    """System health check and telecom engine status."""
+    """System health verification check."""
     return {
-        "status": "HEALTHY",
+        "status": "ONLINE",
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "database": "ONLINE",
-        "engine": "OPERATIONAL"
+        "database": "CONNECTED"
     }
 
 
 @app.get("/", response_class=HTMLResponse, tags=["Dashboard"])
-def get_dashboard_page():
-    """Serve the primary Live Incident & Map Dashboard."""
-    template_path = settings.BASE_DIR / "cellsentinel" / "templates" / "index.html"
+def get_dashboard_view():
+    """Serve the primary Leaflet.js interactive web dashboard."""
+    template_path = Path(__file__).parent / "templates" / "dashboard.html"
     if template_path.exists():
         return FileResponse(template_path)
-    return HTMLResponse("<h2>CellSentinel Dashboard Template Initializing...</h2>")
+    return HTMLResponse("<h3>CellSentinel Dashboard initializing...</h3>")

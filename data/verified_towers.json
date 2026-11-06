@@ -1,0 +1,79 @@
+[
+  {
+    "mcc": 404,
+    "mnc": 45,
+    "lac": 1234,
+    "cell_id": 56789,
+    "latitude": 28.63152,
+    "longitude": 77.21672,
+    "accuracy_radius": 750.0,
+    "carrier": "Bharti Airtel LTE (Connaught Place Central Hub, New Delhi)",
+    "description": "Verified reference macrocell tower in New Delhi central radial zone."
+  },
+  {
+    "mcc": 404,
+    "mnc": 45,
+    "lac": 1234,
+    "cell_id": 5678,
+    "latitude": 28.63280,
+    "longitude": 77.21950,
+    "accuracy_radius": 680.0,
+    "carrier": "Bharti Airtel LTE (Barakhamba Radial, New Delhi)",
+    "description": "Verified macrocell sector on Barakhamba Road."
+  },
+  {
+    "mcc": 404,
+    "mnc": 45,
+    "lac": 1234,
+    "cell_id": 5679,
+    "latitude": 28.63910,
+    "longitude": 77.22560,
+    "accuracy_radius": 820.0,
+    "carrier": "Bharti Airtel LTE (Mandi House Node, New Delhi)",
+    "description": "Verified transit sector cell tower."
+  },
+  {
+    "mcc": 404,
+    "mnc": 20,
+    "lac": 1234,
+    "cell_id": 9901,
+    "latitude": 28.62740,
+    "longitude": 77.20810,
+    "accuracy_radius": 520.0,
+    "carrier": "Reliance Jio 5G (Rajiv Chowk Metro, New Delhi)",
+    "description": "Verified high-capacity 5G gNodeB at Rajiv Chowk."
+  },
+  {
+    "mcc": 404,
+    "mnc": 45,
+    "lac": 4321,
+    "cell_id": 1024,
+    "latitude": 12.93520,
+    "longitude": 77.62450,
+    "accuracy_radius": 650.0,
+    "carrier": "Bharti Airtel 4G (Koramangala, Bengaluru)",
+    "description": "Verified technology corridor tower in Bengaluru."
+  },
+  {
+    "mcc": 310,
+    "mnc": 410,
+    "lac": 8910,
+    "cell_id": 3421,
+    "latitude": 40.75800,
+    "longitude": -73.98550,
+    "accuracy_radius": 450.0,
+    "carrier": "AT&T Mobility 5G+ (Times Square Macro, New York)",
+    "description": "Verified high-density macrocell in Manhattan, NY."
+  },
+  {
+    "mcc": 234,
+    "mnc": 30,
+    "lac": 7012,
+    "cell_id": 4501,
+    "latitude": 51.50740,
+    "longitude": -0.12780,
+    "accuracy_radius": 500.0,
+    "carrier": "EE 5G (Trafalgar Square Tower, London)",
+    "description": "Verified urban cell tower in central London."
+  }
+]
