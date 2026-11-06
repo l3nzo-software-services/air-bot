@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CellSentinel | Lost Device Recovery & Cell-Tower Telemetry Engine</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Dashboard CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20width=%2232%22%20height=%2232%22><circle cx=%2216%22 cy=%2216%22 r=%2214%22 fill=%22%2306b6d4%22/><text x=%2216%22 y=%2222%22 font-size=%2218%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22 font-weight=%22bold%22>CS</text></svg>">
+</head>
+<body>
+
+    <!-- Primary Top Navigation Bar -->
+    <header class="navbar">
+        <div class="brand-section">
+            <div class="radar-icon">
+                <div class="radar-ping"></div>
+                <span style="font-size: 14px;">📡</span>
+            </div>
+            <div>
+                <span class="brand-title">CellSentinel</span>
+                <span class="brand-badge">Telecom Geolocation</span>
+            </div>
+        </div>
+
+        <div class="header-status">
+            <div class="live-pill">
+                <span class="live-dot"></span>
+                <span>GEO-ENGINE ACTIVE</span>
+            </div>
+            <div class="header-actions">
+                <button id="btnOpenSimulator" class="btn btn-accent" title="Simulate Cellular Ping or Silent SMS">
+                    ⚡ Telemetry Simulator
+                </button>
+                <button id="btnOpenRegister" class="btn btn-primary" title="Register Hardware Identity">
+                    + Register Device
+                </button>
+                <button id="btnSeedDemo" class="btn btn-secondary" title="Reset/Re-seed Demo Devices & Trajectory">
+                    🔄 Seed Demo
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Operational KPI Metrics Row -->
+    <section class="kpi-row">
+        <div class="kpi-card">
+            <span class="kpi-label">Tracked Hardware</span>
+            <span id="kpiTotalDevices" class="kpi-val">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Active Incidents (LOST)</span>
+            <span id="kpiLostDevices" class="kpi-val lost">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Recovered Terminals</span>
+            <span id="kpiRecoveredDevices" class="kpi-val recovered">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Secure Terminals</span>
+            <span id="kpiSecureDevices" class="kpi-val secure">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Telemetry Ingested</span>
+            <span id="kpiPings" class="kpi-val pings">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Resolved Cell Towers</span>
+            <span id="kpiTowers" class="kpi-val towers">0</span>
+        </div>
+    </section>
+
+    <!-- Main Operational Workspace Grid -->
+    <main class="workspace-grid">
+
+        <!-- Left Column: Device Identity Registry & Search -->
+        <aside class="sidebar-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span>📱</span> Hardware Registry
+                </div>
+            </div>
+
+            <div class="search-box">
+                <input id="deviceSearchInput" type="text" class="search-input" placeholder="Search IMEI hash, Model, Owner...">
+            </div>
+
+            <div class="filter-tabs">
+                <button class="tab-btn active" data-state="ALL">ALL</button>
+                <button class="tab-btn" data-state="LOST">LOST</button>
+                <button class="tab-btn" data-state="SECURE">SECURE</button>
+                <button class="tab-btn" data-state="RECOVERED">RECOVERED</button>
+            </div>
+
+            <div id="deviceListContainer" class="device-list">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </aside>
+
+        <!-- Center Column: Leaflet Map & Coverage Geometry -->
+        <section class="map-panel">
+            <div class="map-floating-overlay">
+                <div class="overlay-title">
+                    <span id="overlayDeviceModel">Select a device</span>
+                    <span id="overlayDeviceState"></span>
+                </div>
+                <div class="overlay-stat">
+                    <span>Emergency Contact: </span><span id="overlayOwner" style="color:var(--text-primary);">-</span>
+                </div>
+                <div class="overlay-stat">
+                    <span>IMEI SHA-256: </span><span id="overlayImei" style="color:var(--accent-cyan); font-size:10px;">-</span>
+                </div>
+                <div style="margin-top: 5px;">
+                    <button id="btnToggleState" class="btn btn-secondary" style="font-size:0.7rem; padding:0.25rem 0.5rem;">
+                        🔄 Change Device State
+                    </button>
+                </div>
+            </div>
+
+            <!-- Leaflet Map Container -->
+            <div id="leafletMap"></div>
+        </section>
+
+        <!-- Right Column: Cell Tower Transition & SIM Status Timeline -->
+        <aside class="timeline-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span>🕒</span> Transition & SIM Audit Log
+                </div>
+            </div>
+
+            <div id="timelineContainer" class="timeline-list">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Modal: Register Device Hardware Identity -->
+    <div id="registerModal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Register Device Hardware Identity</h3>
+                <button id="btnCloseRegister" class="close-btn">&times;</button>
+            </div>
+            <form id="registerDeviceForm">
+                <div class="form-group">
+                    <label class="form-label">IMEI or IMEI SHA-256 Hash *</label>
+                    <input id="regImei" type="text" class="form-control" placeholder="15-digit IMEI (e.g. 358941098765432) or SHA256" required>
+                    <small style="color:var(--text-muted); font-size:0.65rem;">Raw IMEI will be hashed with SHA-256 for cryptographic privacy.</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Device Model *</label>
+                    <input id="regModel" type="text" class="form-control" placeholder="e.g. Google Pixel 8 Pro" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Owner Full Name *</label>
+                    <input id="regOwnerName" type="text" class="form-control" placeholder="e.g. Vikramaditya Sharma" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Emergency Contact Phone *</label>
+                    <input id="regOwnerPhone" type="text" class="form-control" placeholder="e.g. +919811012345" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Owner Emergency Email *</label>
+                    <input id="regOwnerEmail" type="email" class="form-control" placeholder="e.g. owner@example.com" required>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <div class="form-group">
+                        <label class="form-label">Recovery PIN (Default: 1234)</label>
+                        <input id="regPin" type="password" class="form-control" value="1234">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SIM IMSI (Optional)</label>
+                        <input id="regImsi" type="text" class="form-control" placeholder="Baseline SIM IMSI">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="submit" class="btn btn-primary">Enroll in Registry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Telemetry Simulator -->
+    <div id="simulatorModal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Cell-Tower Telemetry Simulator</h3>
+                <button id="btnCloseSimulator" class="close-btn">&times;</button>
+            </div>
+            <form id="simulatorForm">
+                <div class="form-group">
+                    <label class="form-label">Target Device</label>
+                    <select id="simDeviceSelect" class="form-control"></select>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label class="form-label">Quick Tower Presets:</label>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                        <button type="button" id="presetCP" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.4rem;">Connaught Pl (5678)</button>
+                        <button type="button" id="presetBarakhamba" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.4rem;">Barakhamba (5679)</button>
+                        <button type="button" id="presetMandiHouse" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.4rem;">Mandi House (5680)</button>
+                        <button type="button" id="presetNYC" class="btn btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.4rem;">Times Square NYC</button>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">MCC (Country Code)</label>
+                        <input id="simMcc" type="number" class="form-control" value="404" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">MNC (Network Code)</label>
+                        <input id="simMnc" type="number" class="form-control" value="45" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">LAC (Location Area)</label>
+                        <input id="simLac" type="number" class="form-control" value="1234" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CID (Cell Tower ID)</label>
+                        <input id="simCid" type="number" class="form-control" value="5678" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div style="display:flex; justify-content:space-between;">
+                        <label class="form-label">Signal Strength (RSSI)</label>
+                        <span id="simRssiVal" style="font-size:0.75rem; font-family:var(--font-mono); color:var(--accent-cyan);">-75 dBm</span>
+                    </div>
+                    <input id="simRssi" type="range" min="-120" max="-50" step="1" value="-75" style="width:100%;">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Transport Channel</label>
+                    <select id="simTransport" class="form-control">
+                        <option value="HTTPS">🌐 Mobile Data (HTTPS REST)</option>
+                        <option value="SMS">📡 No Internet / Mobile Data Disabled (Silent SMS Hex PDU)</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1rem;">
+                    <button type="submit" class="btn btn-accent">Transmit Cellular Ping</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Application JS -->
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
