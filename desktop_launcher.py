@@ -6,6 +6,12 @@ Automatically launches the local engine and opens the AIR BOT Control Dashboard.
 
 import sys
 import os
+
+# Ensure project directory is in Python path for standalone launcher & pyinstaller
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 import time
 import webbrowser
 import threading
@@ -46,3 +52,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
