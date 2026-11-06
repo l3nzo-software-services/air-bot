@@ -273,71 +273,8 @@ class TelemetryPayload(BaseModel):
 # ============================================================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite database
+    # Initialize SQLite database schema
     init_db()
-
-    # Pre-seed demo target device if database is empty
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM devices;")
-    count = cursor.fetchone()[0]
-
-    if count == 0:
-        # Seed user reference target device: MCC 404, MNC 45, LAC 1234, Cell_ID 56789
-        resolved = await resolve_cell_tower(404, 45, 1234, 56789)
-        now_ts = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        cursor.execute("""
-            INSERT INTO devices (imei, device_name, mcc, mnc, lac, cell_id, last_seen_timestamp, latitude, longitude, accuracy_radius, carrier_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, (
-            "358941098765432",
-            "Google Pixel 8 Pro",
-            404,
-            45,
-            1234,
-            56789,
-            now_ts,
-            resolved["latitude"],
-            resolved["longitude"],
-            resolved["accuracy_radius"],
-            resolved["carrier_name"]
-        ))
-        cursor.execute("""
-            INSERT INTO telemetry_history (imei, timestamp, mcc, mnc, lac, cell_id, latitude, longitude, accuracy_radius, carrier_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, (
-            "358941098765432",
-            now_ts,
-            404,
-            45,
-            1234,
-            56789,
-            resolved["latitude"],
-            resolved["longitude"],
-            resolved["accuracy_radius"],
-            resolved["carrier_name"]
-        ))
-
-        # Seed second device for testing search
-        r2 = await resolve_cell_tower(310, 410, 8910, 3421)
-        cursor.execute("""
-            INSERT INTO devices (imei, device_name, mcc, mnc, lac, cell_id, last_seen_timestamp, latitude, longitude, accuracy_radius, carrier_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, (
-            "862145041234567",
-            "iPhone 15 Pro Max",
-            310,
-            410,
-            8910,
-            3421,
-            now_ts,
-            r2["latitude"],
-            r2["longitude"],
-            r2["accuracy_radius"],
-            r2["carrier_name"]
-        ))
-        conn.commit()
-    conn.close()
     yield
 
 
@@ -951,12 +888,43 @@ DASHBOARD_HTML = """
 
     <!-- Header Section -->
     <header>
-        <div class="brand-container">
-            <div class="beacon-icon">📡</div>
-            <div>
-                <span class="brand-name">CellSentinel</span>
-                <span class="brand-tag">Cell-Tower Geolocation Engine</span>
-            </div>
+        <div class="brand-container" style="display: flex; align-items: center; gap: 0.8rem;">
+            <a href="/" style="text-decoration: none; display: flex; align-items: center;">
+                <svg viewBox="0 0 720 220" style="height: 52px; width: auto; filter: drop-shadow(0 0 10px rgba(0, 240, 255, 0.45));">
+                    <defs>
+                        <linearGradient id="airBotScriptGradApp" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#38bdf8"/>
+                            <stop offset="40%" stop-color="#00f0ff"/>
+                            <stop offset="85%" stop-color="#818cf8"/>
+                            <stop offset="100%" stop-color="#a78bfa"/>
+                        </linearGradient>
+                        <linearGradient id="wifiAirGradApp" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#00f0ff"/>
+                            <stop offset="100%" stop-color="#38bdf8"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M 45 185 C 160 215, 380 220, 560 188 C 600 180, 625 168, 640 152" fill="none" stroke="url(#airBotScriptGradApp)" stroke-width="7" stroke-linecap="round" opacity="0.9"/>
+                    <g fill="none" stroke="url(#airBotScriptGradApp)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M 55 168 C 95 55, 128 42, 148 90 C 162 128, 142 168, 105 168 C 76 168, 72 136, 98 116 C 132 94, 168 108, 190 162" />
+                        <path d="M 190 162 C 202 138, 214 114, 226 110 C 232 108, 236 116, 236 136 C 236 156, 246 166, 262 160" />
+                        <circle cx="226" cy="78" r="8" fill="#00f0ff" stroke="none"/>
+                        <path d="M 262 160 C 272 135, 282 112, 294 114 C 304 116, 318 112, 316 130 C 312 150, 332 166, 360 152" />
+                        <path d="M 405 60 C 400 115, 388 165, 388 178" />
+                        <path d="M 390 65 C 425 48, 465 58, 460 95 C 455 120, 420 125, 398 125 C 435 125, 475 135, 470 165 C 465 190, 420 188, 398 182 C 420 182, 450 182, 482 165" />
+                        <path d="M 482 165 C 494 135, 508 112, 530 112 C 554 112, 560 135, 554 155 C 548 175, 526 175, 516 160 C 506 138, 526 122, 546 122 L 574 122" />
+                        <path d="M 574 122 C 586 112, 598 85, 602 60 L 602 155 C 602 175, 618 178, 638 165" />
+                        <path d="M 578 102 Q 616 98, 638 102" stroke-width="11" />
+                    </g>
+                    <!-- 📶 Top-Right Radiating Wi-Fi Sentinel Symbol -->
+                    <g transform="translate(610, 22)" fill="none" stroke="url(#wifiAirGradApp)" stroke-linecap="round">
+                        <circle cx="50" cy="80" r="7.5" fill="#00f0ff" stroke="none"/>
+                        <path d="M 35 64 A 20 20 0 0 1 65 64" stroke-width="6.5"/>
+                        <path d="M 23 48 A 36 36 0 0 1 77 48" stroke-width="5.5" opacity="0.9"/>
+                        <path d="M 10 32 A 52 52 0 0 1 90 32" stroke-width="5" opacity="0.75"/>
+                    </g>
+                </svg>
+            </a>
+            <span class="brand-tag">CELLULAR SENTINEL</span>
         </div>
 
         <!-- IMEI Search Bar -->

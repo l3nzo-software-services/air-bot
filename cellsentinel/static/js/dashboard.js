@@ -581,20 +581,21 @@ function setupEventListeners() {
         }
     };
 
-    // Seed Demo Button
-    document.getElementById("btnSeedDemo").onclick = async () => {
-        try {
-            const res = await fetch("/api/v1/dashboard/seed-demo", { method: "POST" });
-            const data = await res.json();
-            await fetchDevices();
-            if (data.lost_device_imei_hash) {
-                selectDevice(data.lost_device_imei_hash);
+    const btnSeedDemo = document.getElementById("btnSeedDemo");
+    if (btnSeedDemo) {
+        btnSeedDemo.onclick = async () => {
+            try {
+                const res = await fetch("/api/v1/dashboard/seed-demo", { method: "POST" });
+                const data = await res.json();
+                await fetchDevices();
+                if (data.lost_device_imei_hash) {
+                    selectDevice(data.lost_device_imei_hash);
+                }
+            } catch (err) {
+                console.error("Seed error:", err);
             }
-            alert("Realistic demo devices and multi-tower handovers re-seeded!");
-        } catch (err) {
-            alert(`Seed error: ${err.message}`);
-        }
-    };
+        };
+    }
 }
 
 function setPreset(mcc, mnc, lac, cid, rssi) {

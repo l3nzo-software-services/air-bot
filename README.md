@@ -1,13 +1,13 @@
 <div align="center">
-  <img src="assets/logo.svg" width="180" height="180" alt="AIR BOT Logo" />
-  <h1>📡 AIR BOT</h1>
-  <p><b>Autonomous Cellular Telemetry & Lost Device Recovery Sentinel</b></p>
+  <img src="assets/logo.svg" width="560" alt="AIR BOT" />
+  <p style="margin-top: 10px;"><b>Autonomous Cellular Telemetry &amp; Lost Device Recovery Sentinel</b></p>
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-00f0ff.svg?style=for-the-badge)](LICENSE)
-  [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-38bdf8.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
-  [![3GPP Telecom](https://img.shields.io/badge/Telecom-3GPP%20Cellular-a855f7.svg?style=for-the-badge)]()
-  [![Battery: Zero Drain](https://img.shields.io/badge/Battery-%3C1%25%20Zero%20Drain-10b981.svg?style=for-the-badge)]()
-  [![Platform: Windows & Android](https://img.shields.io/badge/Platform-Windows%20%7C%20Android-f59e0b.svg?style=for-the-badge)]()
+  [![Latest Release](https://img.shields.io/github/v/release/vasanth5545/air-bot?color=00f0ff&style=for-the-badge&logo=github)](https://github.com/vasanth5545/air-bot/releases)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-38bdf8.svg?style=for-the-badge)](LICENSE)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-a78bfa.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+  [![3GPP Telecom](https://img.shields.io/badge/Telecom-3GPP%20Cellular-10b981.svg?style=for-the-badge)]()
+  [![Battery: Zero Drain](https://img.shields.io/badge/Battery-%3C1%25%20Zero%20Drain-f59e0b.svg?style=for-the-badge)]()
+  [![Platform: Windows & Android](https://img.shields.io/badge/Platform-Windows%20%7C%20Android-ec4899.svg?style=for-the-badge)]()
 </div>
 
 ---

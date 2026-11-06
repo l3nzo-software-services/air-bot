@@ -43,8 +43,9 @@ def main():
     threading.Thread(target=open_dashboard, daemon=True).start()
 
     # Start FastAPI Web Server
+    from cellsentinel.main import app
     uvicorn.run(
-        "cellsentinel.main:app",
+        app,
         host="127.0.0.1",
         port=settings.PORT,
         log_level="warning"
