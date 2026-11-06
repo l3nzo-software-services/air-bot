@@ -37,3 +37,4 @@
 -keepclassmembers class * extends android.content.BroadcastReceiver {
     public void onReceive(android.content.Context, android.content.Intent);
 }
+

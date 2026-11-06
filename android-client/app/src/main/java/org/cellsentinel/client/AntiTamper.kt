@@ -46,3 +46,4 @@ object AntiTamper {
         return String(decrypted, Charsets.UTF_8)
     }
 }
+
