@@ -128,7 +128,7 @@ def test_hardware_derived_key_authentication(client):
     """Verify hardware-derived key authenticates successfully even if issued token is lost/reset."""
     from cellsentinel.services.device_service import derive_hardware_key
 
-    raw_imei = "861952072527237"
+    raw_imei = "358941098765432"
     reg_res = client.post("/api/devices", json={
         "imei": raw_imei,
         "device_name": "realme 14x pro"

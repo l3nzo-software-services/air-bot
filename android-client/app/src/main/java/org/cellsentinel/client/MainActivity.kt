@@ -42,8 +42,8 @@ class MainActivity : Activity() {
         layout.addView(editToken)
 
         val editImei = EditText(this).apply {
-            hint = "Device IMEI (e.g. 861952072527237)"
-            setText("861952072527237")
+            hint = "Device IMEI (e.g. 358941098765432)"
+            setText("358941098765432")
         }
         layout.addView(editImei)
 

@@ -86,7 +86,7 @@ object TelemetryWorker {
         val prefs = context.getSharedPreferences("sentinel_vault", Context.MODE_PRIVATE)
         val serverUrl = prefs.getString("server_url", "http://10.0.2.2:8000") ?: "http://10.0.2.2:8000"
         val rawToken = prefs.getString("device_token", "")
-        val imei = prefs.getString("imei_number", "861952072527237") ?: "861952072527237"
+        val imei = prefs.getString("imei_number", "358941098765432") ?: "358941098765432"
         val emergencyNumber = prefs.getString("emergency_contact", "")
 
         // 200% Hardware Key Persistence:
