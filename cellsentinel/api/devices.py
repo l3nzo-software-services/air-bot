@@ -135,3 +135,4 @@ def get_device_endpoint(identifier: str, db: Session = Depends(get_db)):
         latest_signal_strength=latest_rssi,
         telemetry_count=len(dev.telemetry_records)
     )
+

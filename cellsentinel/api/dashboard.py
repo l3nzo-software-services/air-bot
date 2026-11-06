@@ -4,11 +4,12 @@ Provides operational metrics, search facilities, and real-time Server-Sent Event
 """
 
 import asyncio
+import hashlib
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from cellsentinel.database import get_db
 from cellsentinel.models import Device, Telemetry, CellTowerCache
@@ -49,7 +50,13 @@ def search_devices(
     query = db.query(Device)
 
     if clean.isdigit():
-        query = query.filter((Device.id == int(clean)) | (Device.imei_hash.contains(clean)))
+        conditions = [Device.imei_hash.contains(clean)]
+        if len(clean) < 10:
+            conditions.append(Device.id == int(clean))
+        if len(clean) >= 14:
+            raw_hash = hashlib.sha256(clean.encode("utf-8")).hexdigest()
+            conditions.append(Device.imei_hash == raw_hash)
+        query = query.filter(or_(*conditions))
     else:
         query = query.filter(
             (Device.imei_hash.contains(clean)) |
@@ -122,3 +129,4 @@ async def sse_events():
             "X-Accel-Buffering": "no"
         }
     )
+

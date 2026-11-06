@@ -102,13 +102,19 @@ def authenticate_device(db: Session, device_id_str: str, api_key: str) -> Device
 
 
 def get_device_by_identifier(db: Session, identifier: str) -> Optional[Device]:
-    """Retrieve device by primary ID, full IMEI hash, or prefix."""
+    """Retrieve device by primary ID, raw numeric IMEI, full IMEI hash, or prefix."""
     clean = identifier.strip().lower()
 
     if clean.isdigit():
-        dev = db.query(Device).filter(Device.id == int(clean)).first()
-        if dev:
-            return dev
+        if len(clean) < 10:
+            dev = db.query(Device).filter(Device.id == int(clean)).first()
+            if dev:
+                return dev
+        if len(clean) >= 14:
+            raw_hash = hashlib.sha256(clean.encode("utf-8")).hexdigest().lower()
+            dev = db.query(Device).filter(Device.imei_hash == raw_hash).first()
+            if dev:
+                return dev
 
     # Exact IMEI hash match
     dev = db.query(Device).filter(Device.imei_hash == clean).first()

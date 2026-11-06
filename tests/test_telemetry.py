@@ -151,3 +151,26 @@ def test_realtime_dashboard_sse_stream(client):
             if len(lines) >= 2:
                 break
         assert any("ping" in l for l in lines)
+
+
+def test_sms_out_of_band_telemetry_ingestion(client, registered_device):
+    """Verify offline SMS telemetry payload decoding and tower resolution."""
+    raw_imei = "358941098765432"
+    sms_body = f"LOC:{raw_imei}:404:45:1234:56789:-68"
+
+    res = client.post(
+        "/api/telemetry/sms-webhook",
+        json={
+            "sender": "+919876543210",
+            "message": sms_body
+        }
+    )
+
+    assert res.status_code == 201
+    data = res.json()
+    assert data["success"] is True
+    assert data["tower"]["cell_id"] == 56789
+    assert data["tower"]["latitude"] is not None
+    assert data["tower"]["longitude"] is not None
+    assert data["tower"]["accuracy_radius"] == 750.0
+

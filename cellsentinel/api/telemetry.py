@@ -12,7 +12,8 @@ from cellsentinel.database import get_db
 from cellsentinel.schemas import (
     TelemetryIngestRequest,
     TelemetryIngestResponse,
-    TelemetryHistoryItem
+    TelemetryHistoryItem,
+    SmsWebhookRequest
 )
 from cellsentinel.services import telemetry_service, device_service
 
@@ -66,6 +67,28 @@ async def ingest_telemetry_endpoint(
     )
 
 
+@router.post(
+    "/sms-webhook",
+    response_model=TelemetryIngestResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Ingest out-of-band telemetry via SMS gateway"
+)
+async def ingest_sms_telemetry_endpoint(
+    payload: SmsWebhookRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    POST /api/telemetry/sms-webhook
+    Ingest compact out-of-band telemetry sent over GSM SMS when mobile data is disabled.
+    Payload: {"sender": "+91...", "message": "LOC:<IMEI_OR_HASH>:<MCC>:<MNC>:<LAC>:<CID>:<RSSI>"}
+    """
+    return await telemetry_service.process_sms_telemetry(
+        db=db,
+        message=payload.message,
+        sender=payload.sender
+    )
+
+
 @router.get(
     "/{identifier}/history",
     response_model=List[TelemetryHistoryItem],
@@ -85,3 +108,4 @@ def get_device_history_endpoint(
         )
 
     return telemetry_service.get_telemetry_history(db, dev.id, limit=limit)
+

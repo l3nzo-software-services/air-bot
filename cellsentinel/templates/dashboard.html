@@ -363,6 +363,10 @@
             background: #070b14;
         }
 
+        .leaflet-tile {
+            filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+        }
+
         /* Radar Pin CSS */
         .radar-marker {
             display: flex;
@@ -714,10 +718,10 @@
                 attributionControl: false
             }).setView([28.6315, 77.2167], 14);
 
-            // Dark cartography tile layer
-            L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+            // High-contrast OSM cartography tile layer (No API key required)
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 maxZoom: 19,
-                subdomains: "abcd"
+                attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
 
             L.control.scale({ imperial: false, position: "bottomright" }).addTo(map);
@@ -729,8 +733,9 @@
                 if (res.ok) {
                     const devices = await res.json();
                     if (devices.length > 0) {
-                        loadDevice(devices[0]);
-                        document.getElementById("searchInput").value = devices[0].imei_hash;
+                        const targetDev = devices[devices.length - 1];
+                        loadDevice(targetDev);
+                        document.getElementById("searchInput").value = targetDev.imei_hash;
                     }
                 }
             } catch (e) {
@@ -1051,3 +1056,4 @@
     </script>
 </body>
 </html>
+

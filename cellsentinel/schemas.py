@@ -75,6 +75,12 @@ class TowerLocation(BaseModel):
     location_source: str = Field(..., description="'CACHE', 'OPENCELLID', 'LOCAL_VERIFIED', or 'UNRESOLVED'")
 
 
+class SmsWebhookRequest(BaseModel):
+    """Payload for out-of-band SMS telemetry ingestion."""
+    sender: Optional[str] = Field(default=None, description="Incoming phone number")
+    message: str = Field(..., description="Raw SMS text e.g. LOC:<IMEI_OR_HASH>:<MCC>:<MNC>:<LAC>:<CID>:<RSSI>")
+
+
 class TelemetryIngestResponse(BaseModel):
     """Structured response returned after telemetry ingestion."""
     success: bool

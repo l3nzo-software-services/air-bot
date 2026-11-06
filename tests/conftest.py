@@ -59,3 +59,4 @@ def client():
     """TestClient fixture."""
     with TestClient(app) as c:
         yield c
+

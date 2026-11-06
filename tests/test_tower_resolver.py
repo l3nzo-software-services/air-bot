@@ -125,3 +125,4 @@ def test_unknown_tower_unresolved_handling():
         assert resolved.longitude is None
         assert resolved.accuracy_radius is None
         assert resolved.cell_id == 999999
+

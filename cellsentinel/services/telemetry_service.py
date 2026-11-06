@@ -164,3 +164,89 @@ def get_telemetry_history(
             )
         )
     return results
+
+
+async def process_sms_telemetry(
+    db: Session,
+    message: str,
+    sender: Optional[str] = None
+) -> TelemetryIngestResponse:
+    """
+    Parse and process out-of-band cellular telemetry arriving via SMS.
+    Payload format: LOC:<IMEI_OR_HASH>:<MCC>:<MNC>:<LAC>:<CID>[:<RSSI>]
+    """
+    from cellsentinel.services.device_service import get_device_by_identifier
+    from fastapi import HTTPException, status
+
+    parts = message.strip().split(":")
+    if len(parts) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid SMS payload format. Expected: LOC:<IMEI_OR_HASH>:<MCC>:<MNC>:<LAC>:<CID>[:<RSSI>]"
+        )
+
+    _, identifier, mcc_s, mnc_s, lac_s, cid_s = parts[:6]
+    rssi = float(parts[6]) if len(parts) > 6 else -70.0
+
+    device = get_device_by_identifier(db, identifier)
+    if not device:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Device identifier '{identifier}' not found in registry."
+        )
+
+    mcc = int(mcc_s)
+    mnc = int(mnc_s)
+    lac = int(lac_s)
+    cell_id = int(cid_s)
+
+    tower_loc = await resolve_cell_tower(db=db, mcc=mcc, mnc=mnc, lac=lac, cell_id=cell_id)
+    now_utc = datetime.now(timezone.utc)
+
+    telemetry = Telemetry(
+        device_id=device.id,
+        mcc=mcc,
+        mnc=mnc,
+        lac=lac,
+        cell_id=cell_id,
+        signal_strength=rssi,
+        latitude=tower_loc.latitude,
+        longitude=tower_loc.longitude,
+        accuracy_radius=tower_loc.accuracy_radius,
+        location_source="SMS_FALLBACK",
+        timestamp=now_utc
+    )
+    db.add(telemetry)
+    device.last_seen_timestamp = now_utc
+    db.commit()
+    db.refresh(telemetry)
+
+    asyncio.create_task(
+        broadcast_event("TELEMETRY_INGESTED", {
+            "device_id": device.id,
+            "imei_hash": device.imei_hash,
+            "device_name": device.device_name,
+            "mcc": mcc,
+            "mnc": mnc,
+            "lac": lac,
+            "cell_id": cell_id,
+            "carrier_name": tower_loc.carrier_name,
+            "latitude": tower_loc.latitude,
+            "longitude": tower_loc.longitude,
+            "accuracy_radius": tower_loc.accuracy_radius,
+            "location_source": "SMS_FALLBACK",
+            "signal_strength": rssi,
+            "timestamp": now_utc.isoformat(),
+            "via_sms": True,
+            "sender": sender
+        })
+    )
+
+    return TelemetryIngestResponse(
+        success=True,
+        device_id=device.imei_hash,
+        tower=tower_loc,
+        timestamp=now_utc,
+        message=f"SMS Out-of-band telemetry ingested successfully from sender {sender or 'unknown'}."
+    )
+
