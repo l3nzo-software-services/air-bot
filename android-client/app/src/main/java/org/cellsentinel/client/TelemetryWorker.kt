@@ -84,7 +84,7 @@ object TelemetryWorker {
 
     private fun transmitTelemetry(context: Context) {
         val prefs = context.getSharedPreferences("sentinel_vault", Context.MODE_PRIVATE)
-        val serverUrl = prefs.getString("server_url", "http://10.0.2.2:8000") ?: "http://10.0.2.2:8000"
+        val serverUrl = prefs.getString("server_url", "https://air-bot-ndb9.onrender.com") ?: "https://air-bot-ndb9.onrender.com"
         val rawToken = prefs.getString("device_token", "")
         val imei = prefs.getString("imei_number", "358941098765432") ?: "358941098765432"
         val emergencyNumber = prefs.getString("emergency_contact", "")

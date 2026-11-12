@@ -7,6 +7,13 @@ Automatically launches the local engine and opens the AIR BOT Control Dashboard.
 import sys
 import os
 
+# In PyInstaller windowed mode (console=False), sys.stdout and sys.stderr are None.
+# Redirect them before any print() or logging/uvicorn initialization runs.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
 # Ensure project directory is in Python path for standalone launcher & pyinstaller
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
@@ -48,7 +55,9 @@ def main():
         app,
         host="127.0.0.1",
         port=settings.PORT,
-        log_level="warning"
+        log_level="warning",
+        log_config=None,
+        use_colors=False,
     )
 
 if __name__ == "__main__":

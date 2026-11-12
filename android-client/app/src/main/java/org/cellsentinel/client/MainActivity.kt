@@ -1,10 +1,12 @@
 package org.cellsentinel.client
 
+import android.Manifest
 import android.app.Activity
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.telephony.TelephonyManager
 import android.widget.Button
@@ -13,8 +15,24 @@ import android.widget.Toast
 
 class MainActivity : Activity() {
 
+    private fun ensureSentinelPermissions() {
+        val required = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.SEND_SMS
+        )
+        val missing = required.filter {
+            checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            requestPermissions(missing.toTypedArray(), 1001)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureSentinelPermissions()
 
         // Simple programmatically-styled setup screen
         val layout = android.widget.LinearLayout(this).apply {
@@ -31,8 +49,8 @@ class MainActivity : Activity() {
         layout.addView(title)
 
         val editServer = EditText(this).apply {
-            hint = "CellSentinel Server URL (e.g. http://192.168.1.100:8000)"
-            setText("http://10.0.2.2:8000")
+            hint = "CellSentinel Server URL (e.g. https://air-bot-ndb9.onrender.com)"
+            setText("https://air-bot-ndb9.onrender.com")
         }
         layout.addView(editServer)
 

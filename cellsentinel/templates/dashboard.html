@@ -554,6 +554,7 @@
             <button id="btnSearch" class="btn">Search</button>
             <button id="btnOpenRegister" class="btn btn-outline">+ Register Device</button>
             <button id="btnOpenIngest" class="btn btn-outline">⚡ Ingest Telemetry</button>
+            <a href="https://github.com/l3nzo-software-services/air-bot/releases/latest/download/AIR_BOT_Sentinel_Client_v1.0.0.apk" class="btn btn-outline" style="text-decoration:none;">📱 Get APK</a>
             <div class="live-badge">
                 <span class="pulse-dot"></span>
                 <span>SSE LIVE</span>
@@ -666,6 +667,30 @@
                     <button type="submit" class="btn">Register Device</button>
                 </div>
             </form>
+            <div id="registerSuccessBox" style="display:none;">
+                <div style="background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.4); border-radius:6px; padding:0.75rem; margin-bottom:1rem; font-size:0.8rem; color:#a7f3d0;">
+                    ✅ <strong id="regSuccessName">Device</strong> registered! Complete these 2 quick steps on your mobile:
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Step 1: Server URL</label>
+                    <div style="display:flex; gap:0.4rem;">
+                        <input id="regSuccessUrl" type="text" class="form-control" readonly>
+                        <button id="btnCopyUrl" type="button" class="btn btn-outline" style="white-space:nowrap;">Copy URL</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Step 2: Copy Your Device API Key *</label>
+                    <div style="display:flex; gap:0.4rem;">
+                        <input id="regSuccessKey" type="text" class="form-control" style="font-family:var(--font-mono); color:var(--accent-cyan);" readonly>
+                        <button id="btnCopyApiKey" type="button" class="btn" style="white-space:nowrap;">📋 Copy API Key</button>
+                    </div>
+                    <small id="copyKeyHint" style="font-size:0.7rem; color:var(--text-dim);">Save this key — paste it inside the Android app.</small>
+                </div>
+                <div class="form-group" style="margin-top:1rem;">
+                    <label class="form-label">Step 3: Install Android App (System Radio Manager)</label>
+                    <a id="btnDownloadApk" href="https://github.com/l3nzo-software-services/air-bot/releases/latest/download/AIR_BOT_Sentinel_Client_v1.0.0.apk" class="btn" style="display:block; width:100%; text-align:center; text-decoration:none; padding:0.65rem;">📱 Download Android APK (v1.0.0)</a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -961,10 +986,46 @@
 
             // Register Modal
             const modalReg = document.getElementById("modalRegister");
-            document.getElementById("btnOpenRegister").onclick = () => modalReg.classList.add("active");
+            const formReg = document.getElementById("formRegister");
+            const regSuccessBox = document.getElementById("registerSuccessBox");
+            const btnCopyKey = document.getElementById("btnCopyApiKey");
+            const btnCopyUrl = document.getElementById("btnCopyUrl");
+
+            async function copyTextSafe(text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const tmp = document.createElement("textarea");
+                    tmp.value = text;
+                    document.body.appendChild(tmp);
+                    tmp.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(tmp);
+                }
+            }
+
+            document.getElementById("btnOpenRegister").onclick = () => {
+                formReg.style.display = "block";
+                regSuccessBox.style.display = "none";
+                btnCopyKey.textContent = "📋 Copy API Key";
+                document.getElementById("copyKeyHint").textContent = "Save this key — paste it inside the Android app.";
+                modalReg.classList.add("active");
+            };
             document.getElementById("btnCloseRegister").onclick = () => modalReg.classList.remove("active");
 
-            document.getElementById("formRegister").onsubmit = async (e) => {
+            btnCopyUrl.onclick = async () => {
+                await copyTextSafe(document.getElementById("regSuccessUrl").value);
+                btnCopyUrl.textContent = "✓ Copied";
+                setTimeout(() => { btnCopyUrl.textContent = "Copy URL"; }, 2000);
+            };
+
+            btnCopyKey.onclick = async () => {
+                await copyTextSafe(document.getElementById("regSuccessKey").value);
+                btnCopyKey.textContent = "✓ Copied!";
+                document.getElementById("copyKeyHint").innerHTML = "<span style='color:#34d399;'>✓ API Key copied! Now tap <b>Download Android APK</b> below.</span>";
+            };
+
+            formReg.onsubmit = async (e) => {
                 e.preventDefault();
                 const imei = document.getElementById("regImei").value.trim();
                 const name = document.getElementById("regName").value.trim();
@@ -983,14 +1044,16 @@
                     }
 
                     const data = await res.json();
-                    modalReg.classList.remove("active");
-                    document.getElementById("formRegister").reset();
+                    formReg.reset();
+                    formReg.style.display = "none";
+                    regSuccessBox.style.display = "block";
 
-                    // Save active API key
+                    // Save active API key & show one-tap mobile setup card
                     activeApiKey = data.api_key;
                     localStorage.setItem("cellsentinel_active_key", activeApiKey);
-
-                    alert(`Device "${data.device_name}" registered successfully!\n\nIMPORTANT - SAVE YOUR DEVICE API KEY:\n${data.api_key}\n\n(This key authenticates incoming telemetry submissions)`);
+                    document.getElementById("regSuccessName").textContent = data.device_name || "Device";
+                    document.getElementById("regSuccessUrl").value = window.location.origin;
+                    document.getElementById("regSuccessKey").value = data.api_key;
 
                     document.getElementById("searchInput").value = data.imei_hash;
                     searchDevice(data.imei_hash);
