@@ -2,7 +2,7 @@
   <img src="assets/logo.svg" width="560" alt="AIR BOT" />
   <p style="margin-top: 10px;"><b>Autonomous Cellular Telemetry &amp; Lost Device Recovery Sentinel</b></p>
 
-  [![Latest Release](https://img.shields.io/github/v/release/vasanth5545/air-bot?color=00f0ff&style=for-the-badge&logo=github)](https://github.com/vasanth5545/air-bot/releases)
+  [![Latest Release](https://img.shields.io/github/v/release/l3nzo-software-services/air-bot?color=00f0ff&style=for-the-badge&logo=github)](https://github.com/l3nzo-software-services/air-bot/releases)
   [![License: MIT](https://img.shields.io/badge/License-MIT-38bdf8.svg?style=for-the-badge)](LICENSE)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-a78bfa.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
   [![3GPP Telecom](https://img.shields.io/badge/Telecom-3GPP%20Cellular-10b981.svg?style=for-the-badge)]()
@@ -82,7 +82,7 @@ Unlike fragile tracking apps that fail the moment a thief toggles Airplane mode 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<YOUR_USERNAME>/air-bot.git
+git clone https://github.com/l3nzo-software-services/air-bot.git
 cd air-bot
 
 # 2. Setup virtual environment
